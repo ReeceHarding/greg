@@ -39,42 +39,20 @@ export async function CTASection() {
           </div>
 
           {/* Main heading - matching hero style */}
-          <h2 className="font-instrument mb-6 text-4xl font-bold leading-[1.1] tracking-tight text-white md:text-5xl lg:text-6xl">
-            Ready to stop paying{" "}
+          <h2 className="mb-6 text-center text-4xl font-bold text-white md:text-5xl lg:text-6xl">
+            Ready to build your{" "}
             <span className="relative">
-              <span className="text-purple-200">$33,000/year</span>
-              <svg
-                className="absolute -bottom-2 left-0 w-full"
-                viewBox="0 0 300 12"
-                fill="none"
-              >
-                <path
-                  d="M2 9C2 9 75 3 150 3C225 3 298 9 298 9"
-                  stroke="url(#cta-gradient)"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                />
-                <defs>
-                  <linearGradient
-                    id="cta-gradient"
-                    x1="2"
-                    y1="9"
-                    x2="298"
-                    y2="9"
-                  >
-                    <stop stopColor="#E9D5FF" />
-                    <stop offset="1" stopColor="#F3E8FF" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </span>{" "}
-            for software you'll never own?
+              <span className="underline decoration-white/30 decoration-wavy underline-offset-8">
+                first AI business?
+              </span>
+            </span>
           </h2>
 
           {/* Subheading */}
-          <p className="mx-auto mb-10 max-w-2xl text-xl leading-relaxed text-purple-100 md:text-2xl">
-            Get custom software that you own forever, built in just
-            <span className="font-semibold text-white"> 2 weeks</span>.
+          <p className="mb-8 text-center text-xl text-purple-100 md:text-2xl">
+            Join 645 students already learning from Greg Isenberg.
+            <br className="hidden md:block" />
+            Start building real products that make real money.
           </p>
 
           {/* Feature Pills - matching hero style */}
@@ -101,13 +79,13 @@ export async function CTASection() {
 
           {/* CTA Buttons - matching hero style */}
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="/contact">
+            <Link href="/signup">
               <Button
                 size="lg"
                 className="shadow-purple-lg hover-lift group bg-white px-8 py-6 text-lg font-medium text-purple-600 shadow-xl hover:bg-gray-100 hover:shadow-2xl"
               >
                 <span className="flex items-center gap-3">
-                  Start building for free
+                  Start learning today
                   <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" />
                 </span>
               </Button>
@@ -118,7 +96,7 @@ export async function CTASection() {
                 variant="outline"
                 className="border-2 border-white/30 bg-white/10 px-8 py-6 text-lg font-medium text-white backdrop-blur-sm hover:border-white/40 hover:bg-white/20"
               >
-                See success stories
+                See student success stories
               </Button>
             </Link>
           </div>

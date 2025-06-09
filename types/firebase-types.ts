@@ -176,6 +176,9 @@ export interface FirebaseProgress {
   }
   weeklyReports: WeeklyReport[]
   overallCompletionPercentage: number
+  totalPoints: number // Total points earned
+  currentStreak: number // Current activity streak in days
+  badges: string[] // Array of badge IDs earned
   lastCalculatedAt: Timestamp
 }
 

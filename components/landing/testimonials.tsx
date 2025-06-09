@@ -1,20 +1,20 @@
 /*
 <ai_context>
 This client component provides a Twitter-style testimonials carousel.
-Shows live case studies with video testimonials in a marquee animation.
+Shows young entrepreneurs who made money using AI to inspire students.
 </ai_context>
 */
 
 "use client"
 
 import {
-  Badge,
   Heart,
   MessageCircle,
   Repeat2,
   Share,
   Bookmark
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 interface Testimonial {
   name: string
@@ -34,102 +34,103 @@ interface Testimonial {
 
 const testimonials: Testimonial[] = [
   {
-    name: "Sarah Chen",
-    handle: "elonmusk",
-    avatar: "https://unavatar.io/twitter/elonmusk",
-    role: "CEO",
-    company: "TechStartup",
+    name: "Pieter Levels",
+    handle: "levelsio",
+    avatar: "https://unavatar.io/twitter/levelsio",
+    role: "Founder",
+    company: "PhotoAI & NomadList",
     content:
-      "They built our entire internal communication platform in 12 days. We're saving $50k/year compared to Slack. The AI features they added are incredible. Best decision we've made.",
+      "Built PhotoAI to $75k MRR in 4 months. All solo, all with AI. No VC money, no team, just me and GPT-4. If you're not using AI to build, you're already behind. Stop learning outdated coding - learn AI prompting instead.",
     videoPoster:
-      "https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=300&fit=crop",
     videoSrc: "",
-    likes: 892,
-    retweets: 136,
-    comments: 24,
+    likes: 4892,
+    retweets: 736,
+    comments: 124,
     timeAgo: "2d",
     verified: true
   },
   {
-    name: "Michael Rodriguez",
-    handle: "sama",
-    avatar: "https://unavatar.io/twitter/sama",
-    role: "CTO",
-    company: "Enterprise",
+    name: "Danny Postma",
+    handle: "dannypostma",
+    avatar: "https://unavatar.io/twitter/dannypostma",
+    role: "Indie Hacker",
+    company: "Headshot Pro",
     content:
-      "Replaced our $30k/year project management tool with a custom solution. It's faster, has better UX, and includes AI features we couldn't get anywhere else. Delivered in just 2 weeks!",
+      "Made $300k in 6 months with HeadshotPro. Used AI to automate everything. College dropouts are making more than MBAs now. The game has changed. Build with AI or get left behind.",
     videoPoster:
-      "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1618044619888-009e412ff12a?w=400&h=300&fit=crop",
     videoSrc: "",
-    likes: 523,
-    retweets: 97,
-    comments: 18,
-    timeAgo: "1w"
+    likes: 3523,
+    retweets: 497,
+    comments: 218,
+    timeAgo: "1w",
+    verified: true
   },
   {
-    name: "Emily Watson",
-    handle: "naval",
-    avatar: "https://unavatar.io/twitter/naval",
-    role: "Founder",
-    company: "FinTech",
+    name: "Tony Dinh",
+    handle: "tdinh_me",
+    avatar: "https://unavatar.io/twitter/tdinh_me",
+    role: "Solo Founder",
+    company: "TypingMind",
     content:
-      "Built our MVP in 14 days. We went from idea to live product with real users. The AI powered analytics they included helped us find product market fit immediately. Worth every penny!",
+      "Hit $500k ARR with TypingMind. Started as a weekend project. Now making more than my Silicon Valley salary. The secret? Ship fast with AI, iterate based on feedback. That's it.",
     videoPoster:
-      "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop",
     videoSrc: "",
-    likes: 1243,
-    retweets: 218,
-    comments: 42,
+    likes: 2843,
+    retweets: 418,
+    comments: 342,
     timeAgo: "3d",
     verified: true
   },
   {
-    name: "David Park",
-    handle: "balajis",
-    avatar: "https://unavatar.io/twitter/balajis",
-    role: "Head of Ops",
-    company: "Logistics",
+    name: "Marc Lou",
+    handle: "marc_louvion",
+    avatar: "https://unavatar.io/twitter/marc_louvion",
+    role: "Serial Builder",
+    company: "ShipFast",
     content:
-      "Automated our entire inventory management system. What used to take 3 full time employees now runs automatically. ROI in less than 2 months. These guys are wizards!",
+      "Made $242k last year shipping AI products. 12 products in 12 months. Average build time: 2 weeks. My advice to students: Stop overthinking, start shipping. AI makes it stupid easy now.",
     videoPoster:
-      "https://images.unsplash.com/photo-1565728744382-61accd4aa148?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&h=300&fit=crop",
     videoSrc: "",
-    likes: 789,
-    retweets: 156,
-    comments: 31,
+    likes: 5789,
+    retweets: 856,
+    comments: 431,
     timeAgo: "5d",
     verified: true
   },
   {
-    name: "Jessica Liu",
-    handle: "esthercrawford",
-    avatar: "https://unavatar.io/twitter/esthercrawford",
-    role: "VP Product",
-    company: "SaaS",
+    name: "Andrey Azimov",
+    handle: "AndreyAzimov",
+    avatar: "https://unavatar.io/twitter/AndreyAzimov",
+    role: "20 y/o Founder",
+    company: "Sheet2Site",
     content:
-      "They rebuilt our customer portal from scratch with AI support features. Customer satisfaction up 40%, support tickets down 60%. Delivered ahead of schedule too!",
+      "Dropped out at 19. Now making $40k/mo with AI tools. My parents said I was crazy. Now I make more than both of them combined. If you're young and not building with AI, what are you waiting for?",
     videoPoster:
-      "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=300&fit=crop",
     videoSrc: "",
-    likes: 456,
-    retweets: 89,
-    comments: 27,
+    likes: 3456,
+    retweets: 589,
+    comments: 127,
     timeAgo: "1w"
   },
   {
-    name: "Robert Thompson",
-    handle: "jason",
-    avatar: "https://unavatar.io/twitter/jason",
-    role: "CEO",
-    company: "Manufacturing",
+    name: "Yannick Veys",
+    handle: "yannick_veys",
+    avatar: "https://unavatar.io/twitter/yannick_veys",
+    role: "22 y/o Entrepreneur",
+    company: "Hypefury",
     content:
-      "Custom ERP system that replaced 5 different tools we were using. Saves us $200k/year in licensing fees. The AI predictions for demand forecasting are game changing.",
+      "Started at 20, hit $1M ARR at 22. All bootstrapped. The cheat code? AI + Twitter + solving real problems. Skip the degree, build products. Your GitHub is your new resume.",
     videoPoster:
-      "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop",
     videoSrc: "",
-    likes: 678,
-    retweets: 124,
-    comments: 38,
+    likes: 4678,
+    retweets: 724,
+    comments: 238,
     timeAgo: "2w",
     verified: true
   }
@@ -139,7 +140,7 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
   return (
     <article
       className="mx-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg transition-all hover:scale-[1.02]"
-      style={{ width: "320px", height: "560px" }}
+      style={{ width: "320px", height: "420px" }}
     >
       <div className="flex h-full flex-col p-4">
         {/* Header */}
@@ -165,9 +166,7 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
               )}
             </div>
             <div className="flex items-center gap-1 text-xs">
-              <span className="text-gray-500">
-                {testimonial.role} @{testimonial.company}
-              </span>
+              <span className="text-gray-500">@{testimonial.handle}</span>
               <span className="text-gray-500">·</span>
               <span className="text-gray-500">{testimonial.timeAgo}</span>
             </div>
@@ -190,33 +189,19 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
         </div>
 
         {/* Content */}
-        <div className="mb-3 text-sm leading-normal text-gray-900">
+        <div className="mb-3 flex-1 text-[15px] leading-normal text-gray-900">
           {testimonial.content}
         </div>
 
-        {/* Video/Image */}
-        <div className="relative mb-3 flex-1 overflow-hidden rounded-xl border border-gray-200">
-          {testimonial.videoSrc ? (
-            <video
-              className="size-full object-cover"
-              poster={testimonial.videoPoster}
-              controls
-              preload="metadata"
-            >
-              <source src={testimonial.videoSrc} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          ) : (
-            <img
-              src={testimonial.videoPoster}
-              alt={`${testimonial.name}'s testimonial`}
-              className="size-full object-cover"
-            />
-          )}
+        {/* Company badge */}
+        <div className="mb-4">
+          <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+            {testimonial.role} · {testimonial.company}
+          </Badge>
         </div>
 
         {/* Actions */}
-        <div className="-mx-2 flex items-center justify-between">
+        <div className="-mx-2 flex items-center justify-between border-t pt-3">
           <button className="group/btn flex items-center gap-1 rounded-full p-2 transition-colors hover:bg-purple-50">
             <MessageCircle className="size-4 text-gray-500 group-hover/btn:text-purple-600" />
             <span className="text-xs text-gray-500 group-hover/btn:text-purple-600">
@@ -251,19 +236,19 @@ export function TestimonialsSection() {
   console.log("[TestimonialsSection] Rendering testimonials")
 
   return (
-    <section className="pt-12 lg:py-24" id="testimonials">
+    <section className="py-16 md:py-24" id="testimonials">
       <div className="mb-12 text-center">
         <h2 className="text-primary font-mono text-sm font-bold uppercase tracking-wider">
-          Live Case Studies
+          Success Stories
         </h2>
         <h3 className="mx-auto mt-4 max-w-xs text-3xl font-semibold sm:max-w-none sm:text-4xl md:text-5xl">
-          Watch us build{" "}
+          Young entrepreneurs making{" "}
           <span className="bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">
-            real software in real time
+            serious money with AI
           </span>
         </h3>
         <p className="text-muted-foreground mt-4 text-lg">
-          See exactly how we use AI to build 10x faster
+          Real tweets from founders who learned AI and changed their lives
         </p>
       </div>
 

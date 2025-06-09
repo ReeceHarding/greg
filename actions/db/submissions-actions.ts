@@ -349,6 +349,13 @@ export async function addInstructorFeedbackAction(
       ...doc.data() 
     } as FirebaseSubmission
     
+    // If submission is approved, calculate points
+    if (submission.status === "approved") {
+      console.log("[Submissions Action] Submission approved, calculating points")
+      const { calculatePointsForSubmissionAction } = await import("./gamification-actions")
+      await calculatePointsForSubmissionAction(submissionId)
+    }
+    
     console.log("[Submissions Action] Instructor feedback added successfully")
     
     return {
@@ -386,5 +393,35 @@ export async function deleteSubmissionAction(
   } catch (error) {
     console.error("[Submissions Action] Error deleting submission:", error)
     return { isSuccess: false, message: "Failed to delete submission" }
+  }
+}
+
+// Get all submissions (for admin analytics)
+export async function getAllSubmissionsAction(): Promise<ActionState<FirebaseSubmission[]>> {
+  try {
+    console.log("[Submissions Action] Getting all submissions")
+    
+    if (!db) {
+      console.error("[Submissions Action] Firestore is not initialized")
+      return { isSuccess: false, message: "Database connection failed" }
+    }
+    
+    const snapshot = await db.collection(collections.submissions).get()
+    
+    const allSubmissions = snapshot.docs.map(doc => ({ 
+      submissionId: doc.id,
+      ...doc.data() 
+    } as FirebaseSubmission))
+    
+    console.log(`[Submissions Action] Retrieved ${allSubmissions.length} submissions`)
+    
+    return {
+      isSuccess: true,
+      message: "All submissions retrieved successfully",
+      data: allSubmissions
+    }
+  } catch (error) {
+    console.error("[Submissions Action] Error getting all submissions:", error)
+    return { isSuccess: false, message: "Failed to get all submissions" }
   }
 } 

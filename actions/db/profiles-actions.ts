@@ -273,3 +273,33 @@ export async function deleteProfileAction(
     return { isSuccess: false, message: "Failed to delete profile" }
   }
 }
+
+// Get all profiles (for admin analytics)
+export async function getAllProfilesAction(): Promise<ActionState<FirebaseProfile[]>> {
+  try {
+    console.log("[Profiles Action] Getting all profiles")
+    
+    if (!db) {
+      console.error("[Profiles Action] Firestore is not initialized")
+      return { isSuccess: false, message: "Database connection failed" }
+    }
+    
+    const snapshot = await db.collection(collections.profiles).get()
+    
+    const allProfiles = snapshot.docs.map(doc => ({ 
+      id: doc.id,
+      ...doc.data() 
+    } as FirebaseProfile))
+    
+    console.log(`[Profiles Action] Retrieved ${allProfiles.length} profiles`)
+    
+    return {
+      isSuccess: true,
+      message: "All profiles retrieved successfully",
+      data: allProfiles
+    }
+  } catch (error) {
+    console.error("[Profiles Action] Error getting all profiles:", error)
+    return { isSuccess: false, message: "Failed to get all profiles" }
+  }
+}

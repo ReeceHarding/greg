@@ -1,7 +1,7 @@
 /*
 <ai_context>
 This server component provides the about section.
-Explains the company's expertise and value proposition.
+Explains the AI Summer Camp program for students.
 </ai_context>
 */
 
@@ -15,16 +15,16 @@ export async function AboutSection() {
       <div className="container max-w-7xl">
         <div className="mx-auto mb-16 text-center">
           <h2 className="mb-4 font-mono text-sm font-bold uppercase tracking-wider text-purple-600">
-            ABOUT US
+            ABOUT THE PROGRAM
           </h2>
           <h3 className="mb-6 text-3xl font-semibold sm:text-4xl md:text-5xl">
-            Built for developers, by{" "}
-            <span className="text-purple-600">developers</span>
+            Learn from someone who's{" "}
+            <span className="text-purple-600">actually done it</span>
           </h3>
           <p className="text-muted-foreground mx-auto mt-6 max-w-3xl text-lg">
-            While traditional developers are still coding by hand, we learned
-            directly from the pioneers of AI development. Gauntlet AI accepts
-            less than 1% of applicants. We made it through.
+            Greg Isenberg has built and sold multiple companies. He's taught 
+            hundreds of students how to use AI to build profitable businesses. 
+            This isn't theory - it's proven methods from someone in the arena.
           </p>
         </div>
 
@@ -34,11 +34,11 @@ export async function AboutSection() {
               <Sparkles className="size-8 text-purple-600" />
             </div>
             <h4 className="mb-2 text-lg font-semibold">
-              10x Faster = 10x Cheaper
+              645 Real YouTube Videos
             </h4>
             <p className="text-muted-foreground text-sm">
-              We code at AI speed. What takes agencies 6 months, we ship in 2
-              weeks. Less time = less cost = your savings.
+              Learn from Greg's actual content. Every strategy, every tactic, 
+              every insight from his journey building AI businesses.
             </p>
           </div>
 
@@ -47,11 +47,11 @@ export async function AboutSection() {
               <Shield className="size-8 text-purple-600" />
             </div>
             <h4 className="mb-2 text-lg font-semibold">
-              Built by Builders, Not Talkers
+              AI-Powered Learning
             </h4>
             <p className="text-muted-foreground text-sm">
-              Gauntlet AI graduates who've shipped to real users. We build, you
-              own, SaaS companies cry.
+              Chat with an AI trained on all of Greg's content. Get personalized 
+              advice for your specific business idea anytime.
             </p>
           </div>
 
@@ -59,10 +59,10 @@ export async function AboutSection() {
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full border border-purple-600 bg-white">
               <Code2 className="size-8 text-purple-600" />
             </div>
-            <h4 className="mb-2 text-lg font-semibold">Risk Free Guarantee</h4>
+            <h4 className="mb-2 text-lg font-semibold">Build Real Products</h4>
             <p className="text-muted-foreground text-sm">
-              We work until you love it or it's free. No contracts, no deposits,
-              no risk. Pay only when you see it working.
+              8 week assignments that take you from idea to launched product. 
+              Ship your first AI business while you learn.
             </p>
           </div>
 
@@ -70,9 +70,10 @@ export async function AboutSection() {
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full border border-purple-600 bg-white">
               <Target className="size-8 text-purple-600" />
             </div>
-            <h4 className="mb-2 text-lg font-semibold">Targeted Marketing</h4>
+            <h4 className="mb-2 text-lg font-semibold">Live Sessions</h4>
             <p className="text-muted-foreground text-sm">
-              We help you reach your target audience effectively.
+              Weekly Zoom calls with successful founders. Ask questions, get 
+              feedback, and network with other builders.
             </p>
           </div>
 
@@ -80,9 +81,10 @@ export async function AboutSection() {
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full border border-purple-600 bg-white">
               <Zap className="size-8 text-purple-600" />
             </div>
-            <h4 className="mb-2 text-lg font-semibold">Automated Growth</h4>
+            <h4 className="mb-2 text-lg font-semibold">Fast Track</h4>
             <p className="text-muted-foreground text-sm">
-              We automate your growth strategies to scale your business.
+              While others spend years in college, you'll be making money in weeks. 
+              Join students already earning $10k+ per month.
             </p>
           </div>
 
@@ -90,9 +92,10 @@ export async function AboutSection() {
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full border border-purple-600 bg-white">
               <Users className="size-8 text-purple-600" />
             </div>
-            <h4 className="mb-2 text-lg font-semibold">User-Centric Design</h4>
+            <h4 className="mb-2 text-lg font-semibold">Community</h4>
             <p className="text-muted-foreground text-sm">
-              We design products with user experience in mind.
+              Connect with ambitious students building the future. Your network 
+              is your net worth - start building it here.
             </p>
           </div>
         </div>

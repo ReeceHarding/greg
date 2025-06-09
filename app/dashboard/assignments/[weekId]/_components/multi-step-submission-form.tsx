@@ -20,7 +20,8 @@ import {
   Check,
   PlayCircle,
   X,
-  Loader2
+  Loader2,
+  Eye
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +30,7 @@ interface MultiStepSubmissionFormProps {
   userId: string
   existingSubmission: FirebaseSubmission | null
   onSubmit: (data: any, isDraft: boolean) => Promise<void>
+  onPreview?: (data: any) => void
 }
 
 // Tech stack options
@@ -52,13 +54,14 @@ export default function MultiStepSubmissionForm({
   assignment,
   userId,
   existingSubmission,
-  onSubmit
+  onSubmit,
+  onPreview
 }: MultiStepSubmissionFormProps) {
   console.log("[MultiStepSubmissionForm] Rendering multi-step form")
   
   // Current step state
   const [currentStep, setCurrentStep] = useState(1)
-  const totalSteps = 4
+  const totalSteps = 5
   
   // Form data state
   const [videoUrl, setVideoUrl] = useState(existingSubmission?.content.videoUrl || "")
@@ -216,6 +219,8 @@ export default function MultiStepSubmissionForm({
         return assignment.requirements.reflection ? reflection.length >= 100 : true
       case 4:
         return true // Supporting files are optional
+      case 5:
+        return true // Review step - always can proceed
       default:
         return false
     }
@@ -564,6 +569,112 @@ export default function MultiStepSubmissionForm({
           </div>
         )
         
+      case 5:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Eye className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="text-2xl font-semibold mb-2">Review & Submit</h3>
+              <p className="text-muted-foreground">
+                Review your submission before finalizing
+              </p>
+            </div>
+            
+            <div className="space-y-6 bg-gray-50 rounded-lg p-6">
+              {/* Video Demo Review */}
+              {videoUrl && (
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-600 mb-2">Video Demo</h4>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
+                      {videoUrl}
+                    </a>
+                  </div>
+                </div>
+              )}
+              
+              {/* GitHub Repository Review */}
+              {githubUrl && (
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-600 mb-2">GitHub Repository</h4>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <a href={githubUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
+                      {githubUrl}
+                    </a>
+                  </div>
+                </div>
+              )}
+              
+              {/* Tech Stack Review */}
+              {techStack.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-600 mb-2">Tech Stack</h4>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="flex flex-wrap gap-2">
+                      {techStack.map(tech => (
+                        <Badge key={tech} variant="secondary" className="text-xs">
+                          {tech}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Project Description Review */}
+              {projectDescription && (
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-600 mb-2">Project Description</h4>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{projectDescription}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Reflection Review */}
+              {reflection && (
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-600 mb-2">Reflection ({wordCount} words)</h4>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200 max-h-48 overflow-y-auto">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{reflection}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Files Review */}
+              {(supportingFiles.length > 0 || existingFiles.length > 0) && (
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-600 mb-2">Supporting Files</h4>
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <ul className="space-y-1">
+                      {existingFiles.map((file, index) => (
+                        <li key={`existing-${index}`} className="text-sm text-gray-600">
+                          • {file.fileName} (uploaded)
+                        </li>
+                      ))}
+                      {supportingFiles.map((file, index) => (
+                        <li key={`new-${index}`} className="text-sm text-gray-600">
+                          • {file.name} ({(file.size / 1024 / 1024).toFixed(2)}MB) - to be uploaded
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              
+              {/* Submission Confirmation */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mt-6">
+                <p className="text-sm text-purple-900">
+                  <strong>Ready to submit?</strong> Once submitted, your assignment will be reviewed by the instructor. 
+                  You'll receive AI-powered feedback immediately and instructor feedback within 24-48 hours.
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+        
       default:
         return null
     }
@@ -598,7 +709,8 @@ export default function MultiStepSubmissionForm({
               { icon: Video, label: "Video" },
               { icon: Code2, label: "Details" },
               { icon: FileText, label: "Reflection" },
-              { icon: Upload, label: "Files" }
+              { icon: Upload, label: "Files" },
+              { icon: Eye, label: "Review" }
             ].map((step, index) => (
               <div
                 key={index}

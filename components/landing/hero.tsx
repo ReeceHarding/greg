@@ -128,10 +128,10 @@ export const HeroSection = () => {
               transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
               className="font-instrument mb-10 text-4xl font-bold leading-[1.1] tracking-tight md:text-6xl lg:text-7xl"
             >
-              Build{" "}
+              Learn to build{" "}
               <span className="relative">
                 <span className="bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">
-                  custom software
+                  AI businesses
                 </span>
                 <svg
                   className="absolute -bottom-2 left-0 w-full"
@@ -139,7 +139,7 @@ export const HeroSection = () => {
                   fill="none"
                 >
                   <path
-                    d="M2 9C2 9 75 3 150 3C225 3 298 9 298 9"
+                    d="M2 9C2 75 3 150 3C225 3 298 9 298 9"
                     stroke="url(#paint0_linear)"
                     strokeWidth="4"
                     strokeLinecap="round"
@@ -160,7 +160,7 @@ export const HeroSection = () => {
               </span>{" "}
               <br />
               <span className="text-muted-foreground mt-3 inline-block">
-                you'll own forever
+                that make real money
               </span>
             </motion.h1>
 
@@ -169,12 +169,11 @@ export const HeroSection = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-              className="text-muted-foreground mx-auto mb-10 max-w-2xl text-xl leading-relaxed md:text-2xl"
+              className="text-muted-foreground mb-8 text-lg leading-relaxed md:text-xl"
             >
-              Stop paying monthly for generic SaaS. We build exactly what you
-              need in{" "}
-              <span className="text-foreground font-semibold">2 weeks</span>,
-              not 6 months.
+              Join 645 students learning from Greg Isenberg's proven methods.{" "}
+              <br className="hidden md:block" />
+              Build your first AI product in 2 weeks, not 2 years.
             </motion.p>
 
             {/* Feature pills */}

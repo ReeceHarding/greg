@@ -43,11 +43,14 @@ export async function updateProgressAction(
           postsCreated: data.forumActivity?.postsCreated || 0,
           repliesCreated: data.forumActivity?.repliesCreated || 0,
           upvotesReceived: data.forumActivity?.upvotesReceived || 0,
-          lastActiveAt: FieldValue.serverTimestamp() as unknown as Timestamp
+          lastActiveAt: FieldValue.serverTimestamp() as any
         },
         weeklyReports: [],
         overallCompletionPercentage: 0,
-        lastCalculatedAt: FieldValue.serverTimestamp() as unknown as Timestamp
+        totalPoints: 0,
+        currentStreak: 0,
+        badges: [],
+        lastCalculatedAt: FieldValue.serverTimestamp() as any
       }
       
       await progressRef.set(newProgress)
@@ -325,5 +328,35 @@ Keep the tone supportive, constructive, and personalized. The report should be 2
   } catch (error) {
     console.error("[Progress Actions] Error generating analysis:", error)
     return { isSuccess: false, message: "Failed to generate progress analysis" }
+  }
+}
+
+// Get all student progress (for leaderboard)
+export async function getAllProgressAction(): Promise<ActionState<FirebaseProgress[]>> {
+  try {
+    console.log("[Progress Actions] Getting all student progress")
+    
+    if (!db) {
+      console.error("[Progress Actions] Firestore is not initialized")
+      return { isSuccess: false, message: "Database connection failed" }
+    }
+    
+    const snapshot = await db.collection(collections.progress).get()
+    
+    const allProgress = snapshot.docs.map(doc => ({ 
+      ...doc.data(),
+      studentId: doc.id 
+    } as FirebaseProgress))
+    
+    console.log(`[Progress Actions] Retrieved ${allProgress.length} progress records`)
+    
+    return {
+      isSuccess: true,
+      message: "All progress records retrieved successfully",
+      data: allProgress
+    }
+  } catch (error) {
+    console.error("[Progress Actions] Error getting all progress:", error)
+    return { isSuccess: false, message: "Failed to get all progress records" }
   }
 } 

@@ -304,98 +304,33 @@
 
 ---
 
-## Phase 6: Analytics & Gamification (Depends on: Assignment System, Submission System)
+## Phase 6: Analytics & Gamification 
+[x] User progress tracking and badges
+    - [x] Points system in FirebaseProgress type
+    - [x] Badge definitions and checking logic  
+    - [x] Points calculation on submission approval
+    - [x] Streak tracking and daily updates
+[x] Points system and leaderboard
+    - [x] Leaderboard page at /dashboard/leaderboard
+    - [x] Top students display with badges
+    - [x] Points breakdown and achievements
+[x] Admin analytics dashboard
+    - [x] Analytics page at /admin/analytics
+    - [x] Key metrics display (active students, completion rates)
+    - [x] Daily active users chart
+    - [x] Assignment completion by week
+    - [x] At-risk students identification
 
-### Leaderboard System
-
-#### Frontend Implementation
-- [ ] **Leaderboard Page** (`/dashboard/leaderboard`)
-  - **Header Stats**:
-    - Your rank displayed prominently
-    - Total points and percentile
-    - Current streak indicator
-  
-  - **Leaderboard Table**:
-    - Top 10 students with highlighting for current user
-    - Columns: Rank, Photo, Name, Points, Assignments, Streak
-    - Animated rank changes (up/down arrows)
-    - Click on student to view public profile
-  
-  - **Point Breakdown**:
-    - Sidebar showing how points are earned
-    - Assignment completion: 100 points each
-    - On-time submission: 20 bonus points
-    - Forum participation: 5 points per helpful post
-    - Perfect week: 50 bonus points
-
-- [ ] **Achievement Badges**:
-  - Grid of collectible badges
-  - Examples: "Fast Starter", "Consistent Contributor", "Helping Hand"
-  - Locked badges shown grayed out with requirements
-  - Notification when new badge earned
-
-#### Backend Implementation
-- [ ] **Point Calculation System**:
-  1. Cloud Function triggered on submission approval
-  2. Calculate base points for assignment
-  3. Add bonus for on-time submission
-  4. Check for streak continuation
-  5. Update user's total points
-  6. Recalculate rankings for all users
-  7. Store ranking history for trend tracking
-
-### Admin Analytics Dashboard
-
-#### Frontend Implementation
-- [ ] **Analytics Overview** (`/admin/analytics`)
-  - **Key Metrics Cards**:
-    - Total active students
-    - Average completion rate
-    - This week's submissions
-    - Trending up/down indicators
-  
-  - **Charts and Visualizations**:
-    - Line chart: Daily active users over time
-    - Bar chart: Assignment completion by week
-    - Pie chart: Student status distribution
-    - Heat map: Activity by day and hour
-  
-  - **Student Table**:
-    - Sortable by any metric
-    - Status indicators with color coding
-    - Quick actions: message, view profile, add note
-    - Export to CSV functionality
-
-- [ ] **Individual Student View** (`/admin/students/[studentId]`)
-  - **Profile Section**: Basic info and contact
-  - **Progress Timeline**: Visual timeline of all activities
-  - **Submission History**: All assignments with grades
-  - **Engagement Metrics**: Login frequency, forum activity
-  - **Admin Notes**: Private notes about student
-  - **Action Buttons**: Send email, adjust status, download report
-
-#### Backend Implementation
-- [ ] **Analytics Data Collection**:
-  1. Track all user events: logins, video views, submissions
-  2. Aggregate daily for performance
-  3. Calculate rolling averages
-  4. Generate cohort analytics
-  5. Set up alerts for at-risk students (no activity for 5 days)
-
-#### Expected Functionality After Phase 6:
-- **What you should see**:
-  - Live leaderboard with real-time updates
-  - Working achievement system
-  - Comprehensive admin analytics
-  - Student tracking and intervention tools
-- **Test by**:
-  - Complete assignments to earn points
-  - Check leaderboard updates
-  - View analytics as admin
-  - Generate and export reports
-
-## Phase 7: Landing Page
-
-- create a landing page that speaks straight to student to tell them that 
-- have section instead of testimonials it'll be twitter posts of young entrepnreneurs who made bank 
-here are some to start with. use the twitter aio to pull int he into and show the info (name, etc)
+## Phase 7: Landing Page Enhancement
+[x] Update landing page copy  
+    - [x] Hero section speaks to students wanting to learn AI
+    - [x] About section explains AI Summer Camp program
+    - [x] CTA focused on joining the program
+[x] Add entrepreneur success stories
+    - [x] Replaced testimonials with real entrepreneur tweets
+    - [x] Young founders making money with AI (Pieter Levels, Danny Postma, etc.)
+    - [x] Inspiring students to build AI businesses
+[x] Update pricing for AI Summer Camp
+    - [x] Self-paced option at $497
+    - [x] Cohort-based option at $997
+    - [x] Social proof and student success metrics

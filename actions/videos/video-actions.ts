@@ -150,4 +150,37 @@ export async function searchVideosAction(query: string): Promise<ActionState<Ser
     console.error("[VideoActions] Error searching videos:", error)
     return { isSuccess: false, message: "Failed to search videos" }
   }
+}
+
+// Get all videos (for admin analytics)
+export async function getAllVideosAction(): Promise<ActionState<FirebaseVideo[]>> {
+  try {
+    if (!db) {
+      console.error("[VideoActions] Database not initialized")
+      return { isSuccess: false, message: "Database not initialized" }
+    }
+    
+    console.log("[VideoActions] Fetching all videos for analytics")
+    
+    const videosSnapshot = await db.collection(collections.videos).get()
+    
+    const videos = videosSnapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        ...data,
+        videoId: doc.id
+      } as FirebaseVideo
+    })
+    
+    console.log(`[VideoActions] Retrieved ${videos.length} videos`)
+    
+    return {
+      isSuccess: true,
+      message: "All videos retrieved successfully",
+      data: videos
+    }
+  } catch (error) {
+    console.error("[VideoActions] Error fetching all videos:", error)
+    return { isSuccess: false, message: "Failed to fetch all videos" }
+  }
 } 

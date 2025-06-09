@@ -1,7 +1,7 @@
 /*
 <ai_context>
 This server component provides the pricing section.
-Shows pricing options with purple-centric design.
+Shows AI Summer Camp pricing options for students.
 </ai_context>
 */
 
@@ -33,54 +33,56 @@ export async function PricingSection() {
 
   const pricingTiers: PricingTier[] = [
     {
-      name: "Monthly",
-      description: "Perfect for getting started",
-      price: "$10",
-      period: "/month",
-      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_MONTHLY,
+      name: "Self-Paced",
+      description: "Learn at your own speed",
+      price: "$497",
+      period: "one-time",
+      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SELF_PACED,
       features: [
-        "All core features",
-        "Up to 10,000 API calls",
-        "Priority support",
-        "Regular updates"
+        "All 645 Greg Isenberg videos",
+        "AI chat trained on all content", 
+        "8 week project assignments",
+        "Community Discord access",
+        "Build your first AI business"
       ],
-      ctaText: "Sign in to subscribe",
-      isSubscription: true
+      ctaText: "Start Learning Today",
+      isSubscription: false
     },
     {
-      name: "Yearly",
-      description: "Best value for growing businesses",
-      price: "$100",
-      period: "/year",
-      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_YEARLY,
+      name: "Cohort-Based",
+      description: "Live sessions with mentors",
+      price: "$997",
+      period: "8 weeks",
+      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_COHORT,
       features: [
-        "Everything in Monthly",
-        "Unlimited API calls",
-        "24/7 dedicated support",
-        "Early access to new features",
-        "2 months free"
+        "Everything in Self-Paced",
+        "Weekly live Zoom sessions",
+        "Direct mentor feedback",
+        "Accountability partners",
+        "Demo day with investors",
+        "Job placement support"
       ],
       highlighted: true,
-      ctaText: "Sign in to subscribe",
-      isSubscription: true
+      ctaText: "Join Next Cohort",
+      isSubscription: false
     }
   ]
 
   return (
-    <section className="from-background to-muted/30 bg-gradient-to-b py-12 md:py-24">
+    <section className="from-background to-muted/30 bg-gradient-to-b py-12 md:py-24" id="pricing">
       <div className="container max-w-7xl">
         <div className="mx-auto mb-16 text-center">
           <h2 className="text-primary font-mono text-sm font-bold uppercase tracking-wider">
-            Pricing
+            Join AI Summer Camp
           </h2>
           <h3 className="mx-auto mt-4 max-w-3xl text-3xl font-semibold sm:text-4xl md:text-5xl">
-            Simple,{" "}
+            Invest in yourself,{" "}
             <span className="bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">
-              Transparent Pricing
+              build your future
             </span>
           </h3>
           <p className="text-muted-foreground mx-auto mt-6 max-w-3xl text-lg">
-            Choose the perfect plan for your project. No hidden fees.
+            One payment, lifetime access. Start building AI businesses that make real money.
           </p>
         </div>
 
@@ -132,7 +134,7 @@ export async function PricingSection() {
                   ))}
                 </ul>
 
-                {tier.isSubscription && userId && tier.priceId ? (
+                {userId && tier.priceId ? (
                   <PricingButton
                     userId={userId}
                     priceId={tier.priceId}
@@ -163,12 +165,17 @@ export async function PricingSection() {
           ))}
         </div>
 
-        {/* Money-back guarantee */}
+        {/* Social proof */}
         <div className="mt-16 text-center">
-          <div className="inline-flex items-center gap-3 rounded-full bg-purple-50 px-6 py-3 dark:bg-purple-900/20">
-            <span className="text-sm font-medium text-purple-900 dark:text-purple-300">
-              💜 30-day money-back guarantee
-            </span>
+          <div className="inline-flex flex-col items-center gap-2">
+            <div className="inline-flex items-center gap-3 rounded-full bg-purple-50 px-6 py-3 dark:bg-purple-900/20">
+              <span className="text-sm font-medium text-purple-900 dark:text-purple-300">
+                🚀 Join 100+ students already building with AI
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Average student launches their first product in 4 weeks
+            </p>
           </div>
         </div>
       </div>
