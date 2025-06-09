@@ -238,6 +238,67 @@ export default function ChatClient({ userId }: ChatClientProps) {
     textareaRef.current?.focus()
   }
   
+  // Function to render message content with clickable timestamps
+  const renderMessageContent = (content: string, role: "user" | "assistant") => {
+    if (role === "user" || !video) {
+      // For user messages or when no video context, just split by newlines
+      return content.split("\n").map((paragraph, idx) => (
+        <p key={idx} className="mb-2 last:mb-0">
+          {paragraph}
+        </p>
+      ))
+    }
+    
+    // For assistant messages with video context, parse timestamps
+    const timestampRegex = /\[([^\]]+)\]\(timestamp:(\d+)\)/g
+    
+    return content.split("\n").map((paragraph, idx) => {
+      const parts = []
+      let lastIndex = 0
+      let match
+      
+      while ((match = timestampRegex.exec(paragraph)) !== null) {
+        // Add text before the timestamp
+        if (match.index > lastIndex) {
+          parts.push(paragraph.substring(lastIndex, match.index))
+        }
+        
+        // Add the clickable timestamp
+        const timestampText = match[1]
+        const seconds = parseInt(match[2])
+        
+        parts.push(
+          <button
+            key={`timestamp-${idx}-${match.index}`}
+            onClick={() => {
+              // Navigate to video page with timestamp
+              window.location.href = `/dashboard/videos/${video.videoId}?t=${seconds}`
+            }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-sm font-medium transition-colors duration-200"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {timestampText}
+          </button>
+        )
+        
+        lastIndex = match.index + match[0].length
+      }
+      
+      // Add remaining text
+      if (lastIndex < paragraph.length) {
+        parts.push(paragraph.substring(lastIndex))
+      }
+      
+      return (
+        <p key={idx} className="mb-2 last:mb-0">
+          {parts.length > 0 ? parts : paragraph}
+        </p>
+      )
+    })
+  }
+  
   return (
     <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
       {/* Messages Area */}
@@ -371,11 +432,7 @@ export default function ChatClient({ userId }: ChatClientProps) {
                       : "bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20"
                   }`}>
                     <div className="prose prose-sm max-w-none">
-                      {message.content.split("\n").map((paragraph, idx) => (
-                        <p key={idx} className="mb-2 last:mb-0">
-                          {paragraph}
-                        </p>
-                      ))}
+                      {renderMessageContent(message.content, message.role)}
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 ml-3">

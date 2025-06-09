@@ -180,68 +180,19 @@
 
 ---
 
-## Phase 4: AI-Powered Features (Depends on: Video System, Assignment System)
+## Phase 4: AI & Intelligence Layer (Weeks 7-8)
 
-### AI Chatbot for Video Learning
+### Week 7: AI Integration Setup
+- [x] Set up Claude API integration with proper error handling
+- [x] Implement streaming responses for chat interface
+- [x] Create chat persistence with Firestore
+- [x] Build video transcript search functionality
 
-#### Frontend Implementation
-- [x] **Chat Interface UI** (`/dashboard/chat`) - Already completed with beautiful UI
-
-#### Backend Implementation
-- [x] **Connect Claude API**:
-  1. Implement `/api/claude/chat` endpoint
-  2. Use Claude 4 Sonnet with the configured API key
-  3. Build prompts with video context when available
-  4. Store chat history in `chats` collection
-  5. Handle streaming responses for better UX
-
-- [x] **Pinecone Integration**:
-  - Initialize Pinecone with configured API key
-  - When importing videos, generate embeddings for transcript chunks
-  - Store embeddings with metadata: videoId, startTime, endTime
-  - For queries, find relevant chunks and include in Claude context
-
-- [x] **Video Context Integration**:
-  - Pass videoId from video detail page to chat
-  - Fetch relevant transcript chunks from Pinecone
-  - Parse Claude responses for timestamp references
-  - Convert timestamps to clickable YouTube deeplinks
-
-### Student Progress AI Analysis
-
-#### Backend Implementation
-- [x] **Progress Tracking**:
-  - Create/update documents in `progress` collection
-  - Track video watch time, assignment completions
-  - Calculate overall completion percentage
-
-- [x] **AI Progress Analysis**:
-  1. Gather student's data from `progress` collection
-  2. Create Claude prompt with student journey context
-  3. Generate personalized insights and recommendations
-  4. Cache analysis for 24 hours to manage API costs
-  5. Display in the already-built progress UI
-
-### AI-Powered Assignment Feedback
-
-#### Backend Implementation
-- [x] **Feedback Generation**:
-  1. Triggered when assignment submitted
-  2. Compile submission data from `submissions` collection
-  3. Create detailed Claude prompt with rubric
-  4. Generate structured feedback (strengths, improvements, score)
-  5. Store in submission document's `aiFeedback` field
-  6. Display in student's assignment view
-
-#### Expected Functionality After Phase 4:
-- **What you should see**:
-  - Working AI chat with video context
-  - AI-generated assignment feedback
-  - Personalized progress insights
-- **Test by**:
-  - Ask chatbot about specific video content
-  - Submit assignment and receive AI feedback
-  - Check progress page for AI insights
+### Week 8: AI Features
+- [x] Create AI chat interface for student support
+- [x] Implement automatic assignment feedback generation
+- [x] Build progress tracking with AI insights
+- [x] Add smart notifications for important updates
 
 ---
 

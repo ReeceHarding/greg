@@ -18,43 +18,35 @@ function getPineconeClient(): Pinecone {
   return pineconeClient
 }
 
-// Generate embeddings using Claude
+// Generate embeddings using OpenAI
 async function generateEmbedding(text: string): Promise<number[]> {
   console.log("[Pinecone Actions] Generating embedding for text:", text.substring(0, 50) + "...")
   
   try {
-    // Use Claude to generate a semantic representation, then convert to vector
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    // Use OpenAI's text-embedding-3-small model
+    const response = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-API-Key": process.env.CLAUDE_API_KEY!,
-        "anthropic-version": "2023-06-01"
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        messages: [{
-          role: "user",
-          content: `Generate a semantic embedding vector for the following text. Output exactly ${process.env.PINECONE_DIMENSION} comma-separated floating point numbers between -1 and 1 that represent the semantic meaning of this text. Do not include any other text, just the numbers.
-
-Text: "${text}"`
-        }],
-        max_tokens: 8192,
-        temperature: 0.1
+        model: "text-embedding-3-small",
+        input: text,
+        dimensions: parseInt(process.env.PINECONE_DIMENSION || '1536')
       })
     })
     
     if (!response.ok) {
       const error = await response.text()
-      console.error("[Pinecone Actions] Claude API error:", error)
+      console.error("[Pinecone Actions] OpenAI API error:", error)
       
       // Fallback to simple hash-based embedding
       return generateSimpleEmbedding(text)
     }
     
     const data = await response.json()
-    const embeddingText = data.content[0].text.trim()
-    const embedding = embeddingText.split(',').map((n: string) => parseFloat(n.trim()))
+    const embedding = data.data[0].embedding
     
     // Validate embedding
     if (embedding.length !== parseInt(process.env.PINECONE_DIMENSION || '1536')) {
@@ -62,6 +54,7 @@ Text: "${text}"`
       return generateSimpleEmbedding(text)
     }
     
+    console.log("[Pinecone Actions] Successfully generated embedding")
     return embedding
   } catch (error) {
     console.error("[Pinecone Actions] Error generating embedding:", error)

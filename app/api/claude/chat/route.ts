@@ -1,11 +1,35 @@
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/firebase-auth"
 import { createChatMessageAction, getChatHistoryAction } from "@/actions/db/chat-actions"
 import { getVideoByIdAction } from "@/actions/videos/video-actions"
 import { searchTranscriptChunksAction } from "@/actions/ai/pinecone-actions"
+import { TranscriptChunk } from "@/types/firebase-types"
 
 // Claude 4 Sonnet model
 const CLAUDE_MODEL = "claude-sonnet-4-20250514"
+
+// Function to parse timestamps in text and convert to links
+function parseTimestamps(text: string, videoId?: string): string {
+  if (!videoId) return text
+  
+  // Match various timestamp formats: [0:45], (2:30), 1:23:45, etc.
+  const timestampRegex = /(?:\[)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\]|\))?/g
+  
+  return text.replace(timestampRegex, (match, hours, minutes, seconds) => {
+    let totalSeconds = 0
+    
+    if (seconds) {
+      // Format: HH:MM:SS
+      totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds)
+    } else {
+      // Format: MM:SS
+      totalSeconds = parseInt(hours) * 60 + parseInt(minutes)
+    }
+    
+    // Create a clickable timestamp link
+    return `[${match}](timestamp:${totalSeconds})`
+  })
+}
 
 export async function POST(request: NextRequest) {
   console.log("[Claude API] Received chat request")
@@ -18,65 +42,52 @@ export async function POST(request: NextRequest) {
       return new Response("Unauthorized", { status: 401 })
     }
     
-    const body = await request.json()
-    const { message, videoId, chatId } = body
+    const { message, chatHistory = [], videoId } = await request.json()
     
-    if (!message || typeof message !== "string") {
-      console.log("[Claude API] Invalid message")
-      return new Response("Message is required", { status: 400 })
-    }
+    console.log(`[Claude Chat API] Received message: ${message.substring(0, 100)}...`)
+    console.log(`[Claude Chat API] Chat history length: ${chatHistory.length}`)
+    console.log(`[Claude Chat API] Video ID: ${videoId || 'none'}`)
     
-    console.log(`[Claude API] Processing message for user: ${authResult.user.uid}`)
-    console.log(`[Claude API] Video context: ${videoId || "none"}`)
+    // Get video context if available
+    let videoData = null
+    let relevantChunks: TranscriptChunk[] = []
     
-    // Get chat history if chatId provided
-    let chatHistory: Array<{ role: string; content: string }> = []
-    if (chatId) {
-      const historyResult = await getChatHistoryAction(chatId, authResult.user.uid)
-      if (historyResult.isSuccess && historyResult.data) {
-        chatHistory = historyResult.data.messages.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        }))
+    if (videoId) {
+      console.log(`[Claude Chat API] Fetching video data for: ${videoId}`)
+      const videoResult = await getVideoByIdAction(videoId)
+      
+      if (videoResult.isSuccess && videoResult.data) {
+        videoData = videoResult.data
+        console.log(`[Claude Chat API] Found video: ${videoData.title}`)
+        
+        // Search for relevant transcript chunks
+        console.log(`[Claude Chat API] Searching for relevant transcript chunks...`)
+        const searchResult = await searchTranscriptChunksAction(message, videoId, 5)
+        
+        if (searchResult.isSuccess && searchResult.data) {
+          relevantChunks = searchResult.data
+          console.log(`[Claude Chat API] Found ${relevantChunks.length} relevant chunks`)
+        }
       }
     }
     
-    // Build context if video is provided
-    let context = ""
-    let videoData = null
+    // Build system message with video context
+    let systemMessage = `You are an AI assistant helping students in the AI Summer Camp program. Be helpful, encouraging, and provide specific actionable advice.`
     
-    if (videoId) {
-      console.log(`[Claude API] Fetching video data for: ${videoId}`)
+    if (videoData) {
+      systemMessage += `\n\nYou are currently discussing the video: "${videoData.title}"`
       
-      // Get video details
-      const videoResult = await getVideoByIdAction(videoId)
-      if (videoResult.isSuccess && videoResult.data) {
-        videoData = videoResult.data
-        
-        // Search for relevant transcript chunks
-        console.log("[Claude API] Searching for relevant transcript chunks")
-        const searchResult = await searchTranscriptChunksAction(message, videoId, 5)
-        
-        if (searchResult.isSuccess && searchResult.data && searchResult.data.length > 0) {
-          context = `You are helping a student understand content from a video titled "${videoData.title}".
-
-Video Description: ${videoData.description}
-
-Relevant transcript excerpts:
-${searchResult.data.map((chunk) => 
-  `[${Math.floor(chunk.startTime / 60)}:${String(Math.floor(chunk.startTime % 60)).padStart(2, '0')} - ${Math.floor(chunk.endTime / 60)}:${String(Math.floor(chunk.endTime % 60)).padStart(2, '0')}]
-${chunk.text}`
-).join('\n\n')}
-
-When referencing specific parts of the video, include timestamps in your response using the format [MM:SS]. These will be converted to clickable links.`
-        } else {
-          // Fallback to basic video info if no transcript chunks found
-          context = `You are helping a student understand content from a video titled "${videoData.title}".
+      if (relevantChunks.length > 0) {
+        systemMessage += `\n\nHere are relevant excerpts from the video transcript:`
+        relevantChunks.forEach((chunk, index) => {
+          const startTime = Math.floor(chunk.startTime)
+          const minutes = Math.floor(startTime / 60)
+          const seconds = startTime % 60
+          const timestamp = `${minutes}:${seconds.toString().padStart(2, '0')}`
           
-Video Description: ${videoData.description}
-
-Note: Transcript is not available for this video, so please base your response on the video title and description.`
-        }
+          systemMessage += `\n\n[${timestamp}] ${chunk.text}`
+        })
+        systemMessage += `\n\nWhen referencing specific parts of the video, include timestamps in the format [MM:SS] so students can click to jump to that part.`
       }
     }
     
@@ -100,7 +111,7 @@ Note: Transcript is not available for this video, so please base your response o
     // Build system prompt
     const systemPrompt = `You are an AI tutor helping students learn from educational content about startups, business, and entrepreneurship. 
 
-${context || "Help the student with their questions about the course material."}
+${systemMessage}
 
 Guidelines:
 - Be encouraging and supportive
@@ -173,10 +184,13 @@ Guidelines:
                   if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
                     assistantMessage += parsed.delta.text
                     
+                    // Parse timestamps if video context exists
+                    const parsedContent = parseTimestamps(parsed.delta.text, videoId)
+                    
                     // Forward the chunk to the client
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                       type: 'text',
-                      text: parsed.delta.text
+                      text: parsedContent
                     })}\n\n`))
                   } else if (parsed.type === 'message_stop') {
                     // Save the complete message to database
@@ -185,7 +199,7 @@ Guidelines:
                     // Save user message
                     if (authResult.user) {
                       await createChatMessageAction({
-                        chatId: chatId || `chat_${Date.now()}`,
+                        chatId: `chat_${Date.now()}`,
                         userId: authResult.user.uid,
                         role: "user",
                         content: message,
@@ -196,7 +210,7 @@ Guidelines:
                     // Save assistant message
                     if (authResult.user) {
                       await createChatMessageAction({
-                        chatId: chatId || `chat_${Date.now()}`,
+                        chatId: `chat_${Date.now()}`,
                         userId: authResult.user.uid,
                         role: "assistant",
                         content: assistantMessage,
@@ -207,7 +221,7 @@ Guidelines:
                     // Send completion signal
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                       type: 'done',
-                      chatId: chatId || `chat_${Date.now()}`
+                      chatId: `chat_${Date.now()}`
                     })}\n\n`))
                   }
                 } catch (e) {
