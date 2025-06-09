@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Loader2, Zap, TrendingUp, CheckCircle, Target } from "lucide-react"
 import { getStudentProgressAction, generateProgressAnalysisAction } from "@/actions/db/progress-actions"
 import { FirebaseProgress, SerializedFirebaseAssignment } from "@/types/firebase-types"
@@ -280,7 +280,7 @@ export default function ProgressClient({ userId, assignments, totalVideos }: Pro
                   Growth Opportunities
                 </h4>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Our AI will identify areas where you can improve and provide actionable steps to accelerate your learning journey.
+                  Our AI will identify areas where you can improve and provide actionable steps to accelerate your entrepreneurship journey.
                 </p>
               </div>
             </div>
@@ -291,7 +291,10 @@ export default function ProgressClient({ userId, assignments, totalVideos }: Pro
       {/* Weekly Progress Timeline */}
       <Card className="bg-white/80 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Your Learning Journey</CardTitle>
+          <CardTitle className="text-2xl">Your Entrepreneurship Journey</CardTitle>
+          <CardDescription>
+            Track your progress through the 8-week program
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-0">

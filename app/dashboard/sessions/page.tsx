@@ -13,7 +13,7 @@ export default async function SessionsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Live Sessions</h1>
         <p className="text-muted-foreground mt-2">
-          Join live office hours and expert workshops to accelerate your learning
+          Join live office hours and expert workshops to accelerate your business growth
         </p>
       </div>
       

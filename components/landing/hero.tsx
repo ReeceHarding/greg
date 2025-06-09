@@ -171,9 +171,10 @@ export const HeroSection = () => {
               transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
               className="text-muted-foreground mb-8 text-lg leading-relaxed md:text-xl"
             >
-              Join 645 students learning from Greg Isenberg's proven methods.{" "}
-              <br className="hidden md:block" />
-              Build your first AI product in 2 weeks, not 2 years.
+              Join 645 students building businesses with Greg Isenberg's proven methods.{" "}
+              <span className="inline-flex items-center gap-1 text-purple-700">
+                100% free
+              </span>
             </motion.p>
 
             {/* Feature pills */}

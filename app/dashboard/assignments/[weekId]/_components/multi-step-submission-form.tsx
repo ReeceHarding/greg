@@ -398,51 +398,27 @@ export default function MultiStepSubmissionForm({
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FileText className="w-8 h-8 text-purple-600" />
               </div>
-              <h3 className="text-2xl font-semibold mb-2">Reflection</h3>
+              <h3 className="text-2xl font-semibold mb-2">Share your business experience</h3>
               <p className="text-muted-foreground">
-                Share your learning experience
+                Reflect on your progress, challenges faced, and key insights gained this week.
               </p>
             </div>
             
             <div className="space-y-4">
-              <div className="bg-purple-50 rounded-lg p-4 space-y-3">
-                <h4 className="font-medium text-purple-900">Guided Prompts:</h4>
-                <ul className="space-y-2">
-                  {reflectionPrompts.map((prompt, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-purple-700">
-                      <span className="text-purple-400 mt-0.5">•</span>
-                      <span>{prompt}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <Label htmlFor="reflection">Your Reflection</Label>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className={cn(
-                      "transition-colors",
-                      wordCount < 100 ? "text-orange-600" : "text-green-600"
-                    )}>
-                      {wordCount} words
-                    </span>
-                    <Progress 
-                      value={Math.min((wordCount / 300) * 100, 100)} 
-                      className="w-24 h-2"
-                    />
-                  </div>
-                </div>
+                <Label htmlFor="reflection">
+                  Reflection & Key Insights <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="reflection"
-                  placeholder="Share your thoughts, learnings, and challenges..."
                   value={reflection}
                   onChange={(e) => setReflection(e.target.value)}
-                  rows={12}
-                  className="resize-none"
+                  placeholder="Share your thoughts, insights, and challenges..."
+                  className="min-h-[200px]"
+                  required
                 />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Minimum 100 words recommended • Aim for 200-300 words for a thorough reflection
+                <p className="text-xs text-muted-foreground mt-1">
+                  Minimum 100 characters
                 </p>
               </div>
             </div>

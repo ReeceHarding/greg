@@ -6,11 +6,16 @@ Uses purple gradient background with compelling messaging.
 */
 
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Clock, DollarSign, Shield } from "lucide-react"
+import { ArrowRight, Clock, DollarSign, Shield, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import { auth } from "@/lib/firebase-auth"
 
 export async function CTASection() {
   console.log("[CTASection] Rendering CTA section")
+  
+  // Check if user is logged in
+  const session = await auth()
+  const isLoggedIn = !!session?.userId
 
   return (
     <section className="relative overflow-hidden py-24 md:py-32">
@@ -34,7 +39,7 @@ export async function CTASection() {
           <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-sm">
             <div className="size-2 animate-pulse rounded-full bg-white" />
             <span className="text-sm font-medium text-white/90">
-              Join 100+ businesses saving millions
+              Join 100+ students building successful businesses
             </span>
           </div>
 
@@ -50,7 +55,7 @@ export async function CTASection() {
 
           {/* Subheading */}
           <p className="mb-8 text-center text-xl text-purple-100 md:text-2xl">
-            Join 645 students already learning from Greg Isenberg.
+            Join 645 students already building with Greg Isenberg.
             <br className="hidden md:block" />
             Start building real products that make real money.
           </p>
@@ -77,29 +82,69 @@ export async function CTASection() {
             </div>
           </div>
 
-          {/* CTA Buttons - matching hero style */}
-          <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="/signup">
-              <Button
-                size="lg"
-                className="shadow-purple-lg hover-lift group bg-white px-8 py-6 text-lg font-medium text-purple-600 shadow-xl hover:bg-gray-100 hover:shadow-2xl"
-              >
-                <span className="flex items-center gap-3">
-                  Start learning today
-                  <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" />
-                </span>
-              </Button>
-            </Link>
-            <Link href="#testimonials">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-2 border-white/30 bg-white/10 px-8 py-6 text-lg font-medium text-white backdrop-blur-sm hover:border-white/40 hover:bg-white/20"
-              >
-                See student success stories
-              </Button>
-            </Link>
+          <div className="mx-auto grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3 lg:gap-8">
+            {[
+              {
+                icon: CheckCircle,
+                text: "All 645 Greg Isenberg videos"
+              },
+              {
+                icon: CheckCircle,
+                text: "AI-powered business coaching"
+              },
+              {
+                icon: CheckCircle,
+                text: "8-week startup program"
+              },
+              {
+                icon: CheckCircle,
+                text: "Weekly live sessions"
+              },
+              {
+                icon: CheckCircle,
+                text: "Direct mentor feedback"
+              },
+              {
+                icon: CheckCircle,
+                text: "100% free forever"
+              }
+            ].map((feature, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <feature.icon className="mt-0.5 size-5 shrink-0 text-green-600" />
+                <span className="text-white/90">{feature.text}</span>
+              </div>
+            ))}
           </div>
+
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+            {isLoggedIn ? (
+              <Link href="/dashboard">
+                <Button
+                  size="lg"
+                  className="group rounded-full bg-white px-8 py-6 text-lg font-medium text-purple-600 shadow-[0_10px_40px_rgba(255,255,255,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-purple-50 hover:shadow-[0_15px_50px_rgba(255,255,255,0.4)]"
+                >
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 size-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  className="group rounded-full bg-white px-8 py-6 text-lg font-medium text-purple-600 shadow-[0_10px_40px_rgba(255,255,255,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-purple-50 hover:shadow-[0_15px_50px_rgba(255,255,255,0.4)]"
+                >
+                  Start building today
+                  <ArrowRight className="ml-2 size-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            )}
+          </div>
+
+          <p className="mt-8 text-center text-white/70">
+            Join 645 students already building with Greg Isenberg.
+            <br className="sm:hidden" />
+            <span className="sm:inline"> No credit card required.</span>
+          </p>
         </div>
       </div>
     </section>
