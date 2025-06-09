@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     // Get video context if available
     let videoData = null
     let relevantChunks: TranscriptChunk[] = []
+    let searchedVideoIds: string[] = []
     
     if (videoId) {
       console.log(`[Claude Chat API] Fetching video data for: ${videoId}`)
@@ -60,14 +61,28 @@ export async function POST(request: NextRequest) {
         videoData = videoResult.data
         console.log(`[Claude Chat API] Found video: ${videoData.title}`)
         
-        // Search for relevant transcript chunks
-        console.log(`[Claude Chat API] Searching for relevant transcript chunks...`)
+        // Search for relevant transcript chunks in the specific video
+        console.log(`[Claude Chat API] Searching for relevant transcript chunks in video...`)
         const searchResult = await searchTranscriptChunksAction(message, videoId, 5)
         
-        if (searchResult.isSuccess && searchResult.data) {
+        if (searchResult.isSuccess && searchResult.data && searchResult.data.length > 0) {
           relevantChunks = searchResult.data
-          console.log(`[Claude Chat API] Found ${relevantChunks.length} relevant chunks`)
+          searchedVideoIds = [videoId]
+          console.log(`[Claude Chat API] Found ${relevantChunks.length} relevant chunks in video`)
         }
+      }
+    } else {
+      // No specific video context - search across all videos
+      console.log(`[Claude Chat API] No video context, searching across all videos...`)
+      const searchResult = await searchTranscriptChunksAction(message, undefined, 5)
+      
+      if (searchResult.isSuccess && searchResult.data && searchResult.data.length > 0) {
+        relevantChunks = searchResult.data
+        console.log(`[Claude Chat API] Found ${relevantChunks.length} relevant chunks across all videos`)
+        
+        // Note: In a real implementation, we'd need to enhance the search to return video IDs
+        // For now, we'll note this as a limitation
+        console.log(`[Claude Chat API] Note: Cross-video search results don't include video metadata`)
       }
     }
     
@@ -76,19 +91,41 @@ export async function POST(request: NextRequest) {
     
     if (videoData) {
       systemMessage += `\n\nYou are currently discussing the video: "${videoData.title}"`
+      systemMessage += `\nVideo URL: https://youtube.com/watch?v=${videoData.videoId}`
       
       if (relevantChunks.length > 0) {
-        systemMessage += `\n\nHere are relevant excerpts from the video transcript:`
+        systemMessage += `\n\nHere are the most relevant excerpts from the video transcript based on the user's question:`
         relevantChunks.forEach((chunk, index) => {
           const startTime = Math.floor(chunk.startTime)
-          const minutes = Math.floor(startTime / 60)
-          const seconds = startTime % 60
-          const timestamp = `${minutes}:${seconds.toString().padStart(2, '0')}`
+          const endTime = Math.floor(chunk.endTime)
+          const startMinutes = Math.floor(startTime / 60)
+          const startSeconds = startTime % 60
+          const endMinutes = Math.floor(endTime / 60)
+          const endSeconds = endTime % 60
+          const startTimestamp = `${startMinutes}:${startSeconds.toString().padStart(2, '0')}`
+          const endTimestamp = `${endMinutes}:${endSeconds.toString().padStart(2, '0')}`
           
-          systemMessage += `\n\n[${timestamp}] ${chunk.text}`
+          systemMessage += `\n\n**[${startTimestamp} - ${endTimestamp}]**\n${chunk.text}`
         })
-        systemMessage += `\n\nWhen referencing specific parts of the video, include timestamps in the format [MM:SS] so students can click to jump to that part.`
+        systemMessage += `\n\nIMPORTANT: When referencing specific parts of the video in your response, include clickable timestamps in the format [MM:SS] that students can click to jump directly to that part of the video. The timestamps will be automatically converted to clickable links.`
+        systemMessage += `\n\nExample: "As mentioned at [2:45], Greg explains the importance of finding your first customers..."`
       }
+    } else if (relevantChunks.length > 0) {
+      // Found relevant content across multiple videos
+      systemMessage += `\n\nI found relevant content from the video library based on your question:`
+      relevantChunks.forEach((chunk, index) => {
+        const startTime = Math.floor(chunk.startTime)
+        const endTime = Math.floor(chunk.endTime)
+        const startMinutes = Math.floor(startTime / 60)
+        const startSeconds = startTime % 60
+        const endMinutes = Math.floor(endTime / 60)
+        const endSeconds = endTime % 60
+        const startTimestamp = `${startMinutes}:${startSeconds.toString().padStart(2, '0')}`
+        const endTimestamp = `${endMinutes}:${endSeconds.toString().padStart(2, '0')}`
+        
+        systemMessage += `\n\n**[${startTimestamp} - ${endTimestamp}]**\n${chunk.text}`
+      })
+      systemMessage += `\n\nNote: These excerpts are from various videos in the course. I recommend watching the full videos for complete context.`
     }
     
     // Build messages for Claude

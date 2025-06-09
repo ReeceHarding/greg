@@ -177,8 +177,9 @@ export default function ChatClient({ userId }: ChatClientProps) {
             if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.slice(6))
-                if (data.content) {
-                  assistantMessage += data.content
+                // Handle the streaming response format from Claude API
+                if (data.type === 'text' && data.text) {
+                  assistantMessage += data.text
                   
                   // Update the assistant message in real-time
                   setMessages(prev => {
@@ -198,6 +199,8 @@ export default function ChatClient({ userId }: ChatClientProps) {
                     
                     return newMessages
                   })
+                } else if (data.type === 'done') {
+                  console.log("[ChatClient] Stream completed with chatId:", data.chatId)
                 }
               } catch (e) {
                 console.error("[ChatClient] Error parsing SSE data:", e)
