@@ -30,8 +30,6 @@ import {
   Linkedin,
   Lightbulb
 } from "lucide-react"
-import { motion } from "framer-motion"
-
 export default async function AboutPage() {
   console.log("[About Page] Rendering about page")
 
@@ -106,12 +104,7 @@ export default async function AboutPage() {
       <section className="relative bg-white py-24">
         <div className="absolute inset-0 -z-10 bg-white" />
         <div className="mx-auto max-w-6xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center"
-          >
+          <div className="text-center">
             <h1 className="font-instrument mb-6 text-6xl font-bold leading-tight tracking-tight text-black">
               Building the Future of{" "}
               <span className="text-purple-600">Digital Experiences</span>
@@ -148,7 +141,7 @@ export default async function AboutPage() {
                 </Button>
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
