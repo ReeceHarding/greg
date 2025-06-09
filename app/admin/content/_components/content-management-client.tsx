@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import { Search, Video, Eye, Clock, Calendar, ExternalLink, Trash2, Edit, Upload } from "lucide-react"
+import { Search, Video, Eye, Clock, Calendar, ExternalLink, Trash2, Edit, Upload, ChevronLeft, ChevronRight } from "lucide-react"
 import { format } from "date-fns"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
@@ -47,11 +47,14 @@ interface ContentManagementClientProps {
   initialVideos: SerializedVideo[]
 }
 
+const ITEMS_PER_PAGE = 10
+
 export default function ContentManagementClient({ 
   initialVideos 
 }: ContentManagementClientProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<"date" | "views" | "title">("date")
+  const [currentPage, setCurrentPage] = useState(1)
   const { toast } = useToast()
   
   console.log("[ContentManagementClient] Rendering with", initialVideos.length, "videos")
@@ -86,6 +89,17 @@ export default function ContentManagementClient({
     
     return filtered
   }, [initialVideos, searchQuery, sortBy])
+  
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredVideos.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedVideos = filteredVideos.slice(startIndex, endIndex)
+  
+  // Reset to first page when filter changes
+  useMemo(() => {
+    setCurrentPage(1)
+  }, [searchQuery, sortBy])
   
   // Calculate stats
   const stats = useMemo(() => {
@@ -218,14 +232,14 @@ export default function ContentManagementClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredVideos.length === 0 ? (
+                {paginatedVideos.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground">
                       No videos found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredVideos.map((video) => (
+                  paginatedVideos.map((video) => (
                     <TableRow key={video.videoId}>
                       <TableCell>
                         <div className="flex items-start gap-3">
@@ -322,6 +336,64 @@ export default function ContentManagementClient({
               </TableBody>
             </Table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} - {Math.min(endIndex, filteredVideos.length)} of {filteredVideos.length} videos
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    
+                    if (pageNum === 1 || pageNum === totalPages || (pageNum >= currentPage - 2 && pageNum <= currentPage + 2)) {
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className="w-10"
+                        >
+                          {pageNum}
+                        </Button>
+                      )
+                    }
+                    return null
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

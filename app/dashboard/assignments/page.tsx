@@ -7,15 +7,15 @@ import { getSubmissionsByStudentAction } from "@/actions/db/submissions-actions"
 import Link from "next/link"
 
 export default async function AssignmentsPage() {
-  console.log("[AssignmentsPage] Checking authentication")
+  console.log("[WeeklyCheckInsPage] Checking authentication")
   const user = await auth()
   
   if (!user || !user.userId) {
-    console.log("[AssignmentsPage] No authenticated user, redirecting to login")
+    console.log("[WeeklyCheckInsPage] No authenticated user, redirecting to login")
     redirect("/login")
   }
 
-  console.log("[AssignmentsPage] Rendering assignments page for user:", user.userId)
+  console.log("[WeeklyCheckInsPage] Rendering weekly check-ins page for user:", user.userId)
   
   // Fetch real assignments from database
   const assignmentsResult = await getAllAssignmentsAction()
@@ -25,7 +25,7 @@ export default async function AssignmentsPage() {
   const submissionsResult = await getSubmissionsByStudentAction(user.userId)
   const submissions = submissionsResult.isSuccess ? submissionsResult.data || [] : []
   
-  console.log(`[AssignmentsPage] Fetched ${assignments.length} assignments and ${submissions.length} submissions`)
+  console.log(`[WeeklyCheckInsPage] Fetched ${assignments.length} check-ins and ${submissions.length} submissions`)
 
   // Map assignments to week format with submission status
   const weeks = assignments.map(assignment => {
@@ -85,10 +85,10 @@ export default async function AssignmentsPage() {
           {/* Page Header */}
           <div className="mb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-4">
-              Weekly Assignments
+              Weekly Check-ins
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl">
-              Complete hands-on assignments to build your AI-powered business step by step
+              Share your progress and get feedback to keep building momentum on your AI-powered business
             </p>
           </div>
 
@@ -142,51 +142,51 @@ export default async function AssignmentsPage() {
             </div>
           </div>
 
-          {/* Assignment Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Check-in Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {weeks.length === 0 ? (
               <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground mb-4">No assignments available yet.</p>
-                <p className="text-sm text-muted-foreground">Check back soon for your weekly assignments!</p>
+                <p className="text-muted-foreground mb-4">No check-ins available yet.</p>
+                <p className="text-sm text-muted-foreground">Check back soon for your weekly check-ins!</p>
               </div>
             ) : (
               weeks.map((week) => (
               <div
                 key={week.id}
-                className="group relative bg-white/80 backdrop-blur-sm rounded-3xl border transition-all duration-300 border-border/40 hover:border-primary/30 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.02]"
+                className="group relative bg-white/80 backdrop-blur-sm rounded-2xl border transition-all duration-300 border-border/40 hover:border-primary/30 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.01]"
               >
                 {/* Status Badge */}
                 {week.status === "completed" && (
-                  <div className="absolute -top-3 -right-3 w-12 h-12 bg-accent rounded-full flex items-center justify-center shadow-lg z-10">
-                    <svg className="w-6 h-6 text-accent-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="absolute -top-3 -right-3 w-10 h-10 bg-accent rounded-full flex items-center justify-center shadow-lg z-10">
+                    <svg className="w-5 h-5 text-accent-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
                 )}
 
                 {/* Card Content */}
-                <div className="p-8">
+                <div className="p-6">
                   {/* Week Header */}
-                  <div className="mb-6">
-                    <div className="flex items-center gap-3 mb-3">
-                      <h3 className="text-2xl font-bold">{week.title}</h3>
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-xl font-bold">{week.title}</h3>
                       {week.status === "in-progress" && (
-                        <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
+                        <span className="px-2.5 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded-full">
                           IN PROGRESS
                         </span>
                       )}
                     </div>
-                    <h4 className="text-xl font-semibold text-primary mb-2">{week.theme}</h4>
-                    <p className="text-muted-foreground">{week.description}</p>
+                    <h4 className="text-lg font-semibold text-primary mb-1.5">{week.theme}</h4>
+                    <p className="text-sm text-muted-foreground line-clamp-3">{week.description}</p>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-muted-foreground">Progress</span>
-                      <span className="text-sm font-bold">{week.progress}%</span>
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">Progress</span>
+                      <span className="text-xs font-bold">{week.progress}%</span>
                     </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ${
                           week.status === "completed" 
@@ -199,7 +199,7 @@ export default async function AssignmentsPage() {
                   </div>
 
                   {/* Due Date */}
-                  <div className="mb-6">
+                  <div className="mb-4">
                     <p className={`text-sm font-medium ${
                       week.status === "completed" ? "text-accent" : 
                       week.dueIn.includes("Due in") ? "text-primary" : 
@@ -213,23 +213,23 @@ export default async function AssignmentsPage() {
                   <Link
                     href={`/dashboard/assignments/${week.weekNumber}`}
                     className={`
-                      block w-full py-4 px-6 rounded-2xl font-medium transition-all duration-200 text-center
+                      block w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 text-center text-sm
                       ${week.status === "completed"
                         ? "bg-accent/10 text-accent hover:bg-accent/20"
                         : week.status === "in-progress"
-                        ? "bg-gradient-to-r from-primary to-primary/90 text-white hover:from-primary/90 hover:to-primary/80 shadow-[0_10px_40px_rgba(59,130,246,0.3)] hover:shadow-[0_15px_50px_rgba(59,130,246,0.4)] transform hover:-translate-y-0.5"
+                        ? "bg-gradient-to-r from-primary to-primary/90 text-white hover:from-primary/90 hover:to-primary/80 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                         : "bg-white border border-primary text-primary hover:bg-primary hover:text-white"
                       }
                     `}
                   >
-                    {week.status === "not-started" && "Start Assignment"}
-                    {week.status === "in-progress" && "Continue Assignment"}
+                    {week.status === "not-started" && "Start Check-in"}
+                    {week.status === "in-progress" && "Continue Check-in"}
                     {week.status === "completed" && "View Submission"}
                   </Link>
 
-                  {/* Additional Actions for Active Assignments */}
+                  {/* Additional Actions for Active Check-ins */}
                   {(week.status === "in-progress" || week.status === "not-started") && (
-                    <div className="mt-4 flex items-center justify-between text-sm">
+                    <div className="mt-3 flex items-center justify-between text-xs">
                       <button className="text-muted-foreground hover:text-primary transition-colors duration-200">
                         View Requirements
                       </button>

@@ -188,10 +188,10 @@ export default function ProgressClient({ userId, assignments, totalVideos }: Pro
           </CardContent>
         </Card>
 
-        {/* Assignments Status */}
+        {/* Check-ins Status */}
         <Card className="bg-white/80 backdrop-blur-sm hover:scale-[1.02] transition-all duration-300">
           <CardHeader>
-            <CardTitle className="text-lg">Assignments</CardTitle>
+            <CardTitle className="text-lg">Check-ins</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-6">
@@ -378,7 +378,7 @@ export default function ProgressClient({ userId, assignments, totalVideos }: Pro
           className="mt-6 px-8 py-4 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-white rounded-full font-medium shadow-[0_10px_40px_rgba(59,130,246,0.3)] hover:shadow-[0_15px_50px_rgba(59,130,246,0.4)] transform hover:-translate-y-0.5 transition-all duration-200"
           onClick={() => window.location.href = `/dashboard/assignments/${progress.currentWeek}`}
         >
-          Continue to Week {progress.currentWeek} Assignment
+          Continue to Week {progress.currentWeek} Check-in
         </Button>
       </div>
     </div>

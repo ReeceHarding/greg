@@ -40,6 +40,7 @@ export function NavUser() {
   const [user, setUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [viewMode, setViewMode] = useState<"student" | "admin">("student")
+  const [profilePhotoURL, setProfilePhotoURL] = useState<string>("")
 
   // Listen to auth state changes
   useEffect(() => {
@@ -54,11 +55,27 @@ export function NavUser() {
         console.log("[NavUser] User role:", idTokenResult.claims.role)
         console.log("[NavUser] Is admin:", userIsAdmin)
         
+        // Try to get profile photo from Firestore first
+        let photoURL = firebaseUser.photoURL || ""
+        try {
+          const response = await fetch(`/api/user/profile?userId=${firebaseUser.uid}`)
+          if (response.ok) {
+            const profileData = await response.json()
+            if (profileData.photoURL) {
+              photoURL = profileData.photoURL
+              console.log("[NavUser] Got photo URL from profile:", photoURL)
+            }
+          }
+        } catch (error) {
+          console.error("[NavUser] Error fetching profile:", error)
+        }
+        
         setUser({
           name: firebaseUser.displayName || "Student",
           email: firebaseUser.email || "",
-          avatar: firebaseUser.photoURL || "",
+          avatar: photoURL,
         })
+        setProfilePhotoURL(photoURL)
         setIsAdmin(userIsAdmin)
         
         // Load view mode preference from cookie

@@ -41,7 +41,7 @@ const studentNavItems = [
     icon: Video,
   },
   {
-    title: "Assignments",
+    title: "Check-ins",
     url: "/dashboard/assignments",
     icon: FileText,
   },

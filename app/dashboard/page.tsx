@@ -7,6 +7,8 @@ It uses Firebase Auth and Firestore to get user data.
 
 "use server"
 
+import { Suspense } from "react"
+import { redirect } from "next/navigation"
 import { auth } from "@/lib/firebase-auth"
 import {
   getProfileByUserIdAction,
@@ -23,7 +25,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { redirect } from "next/navigation"
 import {
   CreditCard,
   User,
@@ -41,8 +42,12 @@ import {
   FolderOpen,
   ArrowRight
 } from "lucide-react"
-import { Suspense } from "react"
 import FirestoreSetupNotice from "@/components/utilities/firestore-setup-notice"
+import { adminAuth } from "@/lib/firebase-config"
+import { getStudentProgressAction } from "@/actions/db/progress-actions"
+import { getAllAssignmentsAction } from "@/actions/db/assignments-actions"
+import { getSubmissionsByStudentAction } from "@/actions/db/submissions-actions"
+import { getAllVideosAction } from "@/actions/videos/video-actions"
 
 async function DashboardContent() {
   console.log("[Dashboard Page] Checking authentication")
@@ -74,17 +79,34 @@ async function DashboardContent() {
     const authResult = await auth()
     const user = authResult.user
 
+    // Get full user record from Firebase Admin to get photo URL
+    let photoURL = ""
+    let displayName = ""
+    
+    try {
+      if (adminAuth && userId) {
+        const userRecord = await adminAuth.getUser(userId)
+        photoURL = userRecord.photoURL || ""
+        displayName = userRecord.displayName || userRecord.email?.split("@")[0] || "User"
+        console.log("[Dashboard Page] Got user photo URL:", photoURL ? "Yes" : "No")
+      }
+    } catch (error) {
+      console.error("[Dashboard Page] Error getting user record:", error)
+    }
+    
     // Create profile with available data
-    // Note: DecodedIdToken from session might have limited data
     const role = authResult.role || "student"
     const email = user?.email || ""
-    const displayName = email.split("@")[0] || "User"
+    
+    if (!displayName) {
+      displayName = email.split("@")[0] || "User"
+    }
 
     profileResult = await createProfileAction({
       userId: userId,
       email: email,
       displayName: displayName,
-      photoURL: "",
+      photoURL: photoURL,
       membership: "free"
     })
 
@@ -106,42 +128,66 @@ async function DashboardContent() {
 
   const profile = profileResult.isSuccess ? profileResult.data : null
 
+  // Fetch real data
+  const [progressResult, assignmentsResult, submissionsResult, videosResult] = await Promise.all([
+    getStudentProgressAction(userId),
+    getAllAssignmentsAction(),
+    getSubmissionsByStudentAction(userId),
+    getAllVideosAction()
+  ])
+
+  const progress = progressResult.isSuccess ? progressResult.data : null
+  const assignments = assignmentsResult.isSuccess ? assignmentsResult.data : []
+  const submissions = submissionsResult.isSuccess ? submissionsResult.data : []
+  const videos = videosResult.isSuccess ? videosResult.data : []
+
+  // Calculate real stats
+  const completedSubmissions = submissions.filter(s => s.status === "approved").length
+  const pendingSubmissions = submissions.filter(s => s.status === "submitted" && !s.instructorFeedback).length
+  const totalAssignments = assignments.length
+  const completionRate = totalAssignments > 0 ? Math.round((completedSubmissions / totalAssignments) * 100) : 0
+  
+  // Get videos watched from progress
+  const videosWatched = progress?.videosWatched?.length || 0
+  const totalVideos = videos.length
+  const videoProgress = totalVideos > 0 ? Math.round((videosWatched / totalVideos) * 100) : 0
+
   const stats = [
     {
-      title: "Monthly Revenue",
-      value: "$48,291",
-      change: "+12.5%",
-      changeType: "positive",
-      icon: DollarSign,
-      description: "from last month",
-      trend: [20, 25, 22, 28, 32, 35, 48]
+      title: "Check-in Progress",
+      value: `${completedSubmissions}/${totalAssignments}`,
+      change: `${completionRate}%`,
+      changeType: "positive" as const,
+      icon: FolderOpen,
+      description: "completed",
+      trend: [] // Could calculate weekly trend if we track submission dates
     },
     {
-      title: "Active Users",
-      value: "2,345",
-      change: "+5.4%",
-      changeType: "positive",
-      icon: Users,
-      description: "from last month",
-      trend: [100, 120, 115, 130, 125, 140, 155]
+      title: "Videos Watched",
+      value: `${videosWatched}`,
+      change: `${videoProgress}%`,
+      changeType: "positive" as const,
+      icon: Activity,
+      description: `of ${totalVideos} total`,
+      trend: []
     },
     {
-      title: "Conversion Rate",
-      value: "3.45%",
-      change: "-2.1%",
-      changeType: "negative",
+      title: "Current Week",
+      value: `Week ${progress?.currentWeek || 1}`,
+      change: progress?.currentStreak ? `${progress.currentStreak} day streak` : "Start today",
+      changeType: "positive" as const,
       icon: TrendingUp,
-      description: "from last month",
-      trend: [3.8, 3.9, 3.7, 3.6, 3.5, 3.4, 3.45]
+      description: "of 8 weeks",
+      trend: []
     },
     {
-      title: "Total Sales",
-      value: "892",
-      change: "+18.2%",
-      changeType: "positive",
-      icon: ShoppingCart,
-      description: "from last month",
-      trend: [650, 680, 700, 750, 780, 820, 892]
+      title: "Total Points",
+      value: progress?.totalPoints?.toLocaleString() || "0",
+      change: "+0",
+      changeType: "positive" as const,
+      icon: Zap,
+      description: "points earned",
+      trend: []
     }
   ]
 
@@ -169,23 +215,52 @@ async function DashboardContent() {
     }
   ]
 
-  const recentActivities = [
-    {
-      title: "New Project Started",
-      description: "You've started a new project",
-      time: "10:00 AM"
-    },
-    {
-      title: "Payment Received",
-      description: "You've received a payment",
-      time: "11:00 AM"
-    },
-    {
-      title: "New Message",
-      description: "You've received a new message",
-      time: "12:00 PM"
-    }
-  ]
+  const recentActivities = submissions
+    .sort((a, b) => {
+      const dateA = a.submittedAt instanceof Date ? a.submittedAt : 
+                    typeof a.submittedAt === 'string' ? new Date(a.submittedAt) : 
+                    a.submittedAt ? new Date(a.submittedAt.seconds * 1000) : new Date(0)
+      const dateB = b.submittedAt instanceof Date ? b.submittedAt : 
+                    typeof b.submittedAt === 'string' ? new Date(b.submittedAt) : 
+                    b.submittedAt ? new Date(b.submittedAt.seconds * 1000) : new Date(0)
+      return dateB.getTime() - dateA.getTime()
+    })
+    .slice(0, 3)
+    .map(submission => {
+      const assignment = assignments.find(a => a.assignmentId === submission.assignmentId)
+      const submittedAt = submission.submittedAt instanceof Date ? submission.submittedAt : 
+                         typeof submission.submittedAt === 'string' ? new Date(submission.submittedAt) : 
+                         submission.submittedAt ? new Date(submission.submittedAt.seconds * 1000) : new Date()
+      
+      return {
+        title: assignment?.title || `Week ${submission.assignmentId.replace('week-', '')} Check-in`,
+        description: submission.status === "approved" ? "Check-in approved!" :
+                     submission.status === "needs_revision" ? "Needs revision" :
+                     "Submitted for review",
+        time: submittedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      }
+    })
+  
+  // If no submissions, show placeholder activities
+  if (recentActivities.length === 0) {
+    recentActivities.push(
+      {
+        title: "Welcome to AI Summer Camp!",
+        description: "Start your first check-in",
+        time: "Now"
+      },
+      {
+        title: "Watch Introduction Videos",
+        description: "Learn the basics to get started",
+        time: "Today"
+      },
+      {
+        title: "Join the Community",
+        description: "Connect with other students",
+        time: "Anytime"
+      }
+    )
+  }
 
   return (
     <div className="container mx-auto space-y-8 p-6 lg:p-8">
@@ -385,14 +460,14 @@ async function DashboardContent() {
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="mb-1 text-sm font-medium text-gray-500">
-                Total Projects
+                Total Submissions
               </p>
               <div className="flex items-baseline gap-2">
                 <span className="font-instrument text-3xl font-bold text-purple-600">
-                  12
+                  {submissions.length}
                 </span>
                 <span className="text-sm font-medium text-green-600">
-                  +2.5%
+                  {pendingSubmissions > 0 ? `${pendingSubmissions} pending` : "All reviewed"}
                 </span>
               </div>
             </div>
