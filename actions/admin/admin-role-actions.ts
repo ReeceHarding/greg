@@ -8,7 +8,13 @@ import { FieldValue } from "firebase-admin/firestore"
 interface AdminEmail {
   email: string
   addedBy: string
-  addedAt: FirebaseFirestore.Timestamp
+  addedAt: Date | string
+}
+
+interface AdminEmailDoc {
+  email: string
+  addedBy: string
+  addedAt: FirebaseFirestore.Timestamp | FirebaseFirestore.FieldValue
 }
 
 // Create admin email entry
@@ -29,7 +35,7 @@ export async function addAdminEmailAction(
       return { isSuccess: false, message: "Email is already an admin" }
     }
 
-    const adminEmailData = {
+    const adminEmailData: AdminEmailDoc = {
       email,
       addedBy,
       addedAt: FieldValue.serverTimestamp()
@@ -43,7 +49,11 @@ export async function addAdminEmailAction(
     return {
       isSuccess: true,
       message: "Admin email added successfully",
-      data: adminEmailData as AdminEmail
+      data: {
+        email,
+        addedBy,
+        addedAt: new Date().toISOString()
+      }
     }
   } catch (error) {
     console.error("[AdminRole] Error adding admin email:", error)
@@ -91,7 +101,14 @@ export async function getAdminEmailsAction(): Promise<ActionState<AdminEmail[]>>
     const adminEmails: AdminEmail[] = []
 
     snapshot.forEach(doc => {
-      adminEmails.push(doc.data() as AdminEmail)
+      const data = doc.data() as AdminEmailDoc
+      adminEmails.push({
+        email: data.email,
+        addedBy: data.addedBy,
+        addedAt: data.addedAt && typeof data.addedAt === 'object' && 'toDate' in data.addedAt
+          ? data.addedAt.toDate().toISOString()
+          : new Date().toISOString()
+      })
     })
 
     return {

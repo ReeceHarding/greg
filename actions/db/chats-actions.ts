@@ -26,7 +26,17 @@ export async function createChatAction(
     console.log("[createChatAction] Creating chat document in Firestore")
     const docRef = await db.collection(collections.chats).add(chatData)
     const newChat = await docRef.get()
-    const chatWithId = { id: docRef.id, ...newChat.data() } as FirebaseChat
+    const chatDocData = newChat.data()
+    
+    if (!chatDocData) {
+      console.error("[createChatAction] Failed to retrieve created chat data")
+      return { isSuccess: false, message: "Failed to retrieve created chat" }
+    }
+    
+    const chatWithId = {
+      id: docRef.id,
+      ...chatDocData
+    } as unknown as FirebaseChat
     
     console.log("[createChatAction] Chat created successfully with ID:", docRef.id)
     return {
@@ -59,7 +69,17 @@ export async function getChatAction(
       return { isSuccess: false, message: "Chat not found" }
     }
     
-    const chat = { id: doc.id, ...doc.data() } as FirebaseChat
+    const chatData = doc.data()
+    if (!chatData) {
+      console.error("[getChatAction] Chat data is empty")
+      return { isSuccess: false, message: "Chat data is empty" }
+    }
+    
+    const chat = {
+      id: doc.id,
+      ...chatData
+    } as unknown as FirebaseChat
+    
     console.log("[getChatAction] Chat fetched successfully")
     
     return {
@@ -91,10 +111,13 @@ export async function getUserChatsAction(
       .orderBy('updatedAt', 'desc')
       .get()
     
-    const chats = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as FirebaseChat[]
+    const chats = snapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        ...data
+      } as unknown as FirebaseChat
+    })
     
     console.log("[getUserChatsAction] Fetched", chats.length, "chats for user")
     
@@ -131,7 +154,17 @@ export async function updateChatAction(
     await db.collection(collections.chats).doc(chatId).update(updateData)
     
     const updatedDoc = await db.collection(collections.chats).doc(chatId).get()
-    const updatedChat = { id: updatedDoc.id, ...updatedDoc.data() } as FirebaseChat
+    const updatedDocData = updatedDoc.data()
+    
+    if (!updatedDocData) {
+      console.error("[updateChatAction] Failed to retrieve updated chat data")
+      return { isSuccess: false, message: "Failed to retrieve updated chat" }
+    }
+    
+    const updatedChat = {
+      id: updatedDoc.id,
+      ...updatedDocData
+    } as unknown as FirebaseChat
     
     console.log("[updateChatAction] Chat updated successfully")
     return {
@@ -212,7 +245,16 @@ export async function getChatWithStatsAction(
       return { isSuccess: false, message: "Chat not found" }
     }
     
-    const chat = { id: chatDoc.id, ...chatDoc.data() } as FirebaseChat
+    const chatDocData = chatDoc.data()
+    if (!chatDocData) {
+      console.error("[getChatWithStatsAction] Chat data is empty")
+      return { isSuccess: false, message: "Chat data is empty" }
+    }
+    
+    const chat = {
+      id: chatDoc.id,
+      ...chatDocData
+    } as unknown as FirebaseChat
     
     // Get message count
     const messagesSnapshot = await db

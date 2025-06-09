@@ -1,15 +1,16 @@
 "use server"
 
 import { db, collections } from "@/db/db"
-import { FirebaseMessage } from "@/types/firebase-types"
+import { ChatMessage } from "@/types/firebase-types"
 import { ActionState } from "@/types"
 import { FieldValue } from 'firebase-admin/firestore'
 
 // Create a new message
 export async function createMessageAction(
-  data: Omit<FirebaseMessage, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<ActionState<FirebaseMessage>> {
-  console.log("[createMessageAction] Starting message creation for chat:", data.chatId)
+  chatId: string,
+  data: Omit<ChatMessage, 'messageId' | 'timestamp'>
+): Promise<ActionState<ChatMessage>> {
+  console.log("[createMessageAction] Creating message for chat:", chatId)
   
   try {
     if (!db) {
@@ -19,22 +20,23 @@ export async function createMessageAction(
 
     const messageData = {
       ...data,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp()
+      chatId,
+      timestamp: FieldValue.serverTimestamp()
     }
     
     console.log("[createMessageAction] Creating message document in Firestore")
     const docRef = await db.collection(collections.messages).add(messageData)
     const newMessage = await docRef.get()
-    const messageWithId = { id: docRef.id, ...newMessage.data() } as FirebaseMessage
+    const messageWithId = { messageId: docRef.id, ...newMessage.data() } as unknown as ChatMessage
     
-    // Update the chat's updatedAt timestamp
-    console.log("[createMessageAction] Updating chat timestamp")
-    await db.collection(collections.chats).doc(data.chatId).update({
+    console.log("[createMessageAction] Message created successfully with ID:", docRef.id)
+    
+    // Update the chat's lastMessageAt timestamp
+    await db.collection(collections.chats).doc(chatId).update({
+      lastMessageAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
     })
     
-    console.log("[createMessageAction] Message created successfully with ID:", docRef.id)
     return {
       isSuccess: true,
       message: "Message created successfully",
@@ -46,10 +48,51 @@ export async function createMessageAction(
   }
 }
 
+// Read messages for a chat
+export async function getChatMessagesAction(
+  chatId: string,
+  limit: number = 50
+): Promise<ActionState<ChatMessage[]>> {
+  console.log("[getChatMessagesAction] Fetching messages for chat:", chatId)
+  
+  try {
+    if (!db) {
+      console.error("[getChatMessagesAction] Firestore is not initialized")
+      return { isSuccess: false, message: "Database connection failed" }
+    }
+
+    const snapshot = await db
+      .collection(collections.messages)
+      .where('chatId', '==', chatId)
+      .orderBy('timestamp', 'desc')
+      .limit(limit)
+      .get()
+    
+    const messages = snapshot.docs.map(doc => ({
+      messageId: doc.id,
+      ...doc.data()
+    })) as unknown as ChatMessage[]
+    
+    // Reverse to get chronological order
+    messages.reverse()
+    
+    console.log("[getChatMessagesAction] Fetched", messages.length, "messages")
+    
+    return {
+      isSuccess: true,
+      message: "Messages fetched successfully",
+      data: messages
+    }
+  } catch (error) {
+    console.error("[getChatMessagesAction] Error fetching messages:", error)
+    return { isSuccess: false, message: "Failed to fetch messages" }
+  }
+}
+
 // Read a single message by ID
 export async function getMessageAction(
   messageId: string
-): Promise<ActionState<FirebaseMessage>> {
+): Promise<ActionState<ChatMessage>> {
   console.log("[getMessageAction] Fetching message with ID:", messageId)
   
   try {
@@ -65,7 +108,7 @@ export async function getMessageAction(
       return { isSuccess: false, message: "Message not found" }
     }
     
-    const message = { id: doc.id, ...doc.data() } as FirebaseMessage
+    const message = { messageId: doc.id, ...doc.data() } as unknown as ChatMessage
     console.log("[getMessageAction] Message fetched successfully")
     
     return {
@@ -79,53 +122,11 @@ export async function getMessageAction(
   }
 }
 
-// Read all messages for a chat
-export async function getChatMessagesAction(
-  chatId: string,
-  limit?: number
-): Promise<ActionState<FirebaseMessage[]>> {
-  console.log("[getChatMessagesAction] Fetching messages for chat:", chatId, "with limit:", limit)
-  
-  try {
-    if (!db) {
-      console.error("[getChatMessagesAction] Firestore is not initialized")
-      return { isSuccess: false, message: "Database connection failed" }
-    }
-
-    let query = db
-      .collection(collections.messages)
-      .where('chatId', '==', chatId)
-      .orderBy('createdAt', 'asc')
-    
-    if (limit) {
-      query = query.limit(limit)
-    }
-    
-    const snapshot = await query.get()
-    
-    const messages = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as FirebaseMessage[]
-    
-    console.log("[getChatMessagesAction] Fetched", messages.length, "messages for chat")
-    
-    return {
-      isSuccess: true,
-      message: "Messages fetched successfully",
-      data: messages
-    }
-  } catch (error) {
-    console.error("[getChatMessagesAction] Error fetching chat messages:", error)
-    return { isSuccess: false, message: "Failed to fetch messages" }
-  }
-}
-
-// Update a message
+// Update a message (for editing)
 export async function updateMessageAction(
   messageId: string,
-  data: Partial<Omit<FirebaseMessage, 'id' | 'createdAt' | 'updatedAt' | 'chatId' | 'role'>>
-): Promise<ActionState<FirebaseMessage>> {
+  content: string
+): Promise<ActionState<ChatMessage>> {
   console.log("[updateMessageAction] Updating message with ID:", messageId)
   
   try {
@@ -135,21 +136,16 @@ export async function updateMessageAction(
     }
 
     const updateData = {
-      ...data,
-      updatedAt: FieldValue.serverTimestamp()
+      content,
+      edited: true,
+      editedAt: FieldValue.serverTimestamp()
     }
     
     console.log("[updateMessageAction] Updating message document in Firestore")
     await db.collection(collections.messages).doc(messageId).update(updateData)
     
     const updatedDoc = await db.collection(collections.messages).doc(messageId).get()
-    const updatedMessage = { id: updatedDoc.id, ...updatedDoc.data() } as FirebaseMessage
-    
-    // Update the chat's updatedAt timestamp
-    console.log("[updateMessageAction] Updating chat timestamp")
-    await db.collection(collections.chats).doc(updatedMessage.chatId).update({
-      updatedAt: FieldValue.serverTimestamp()
-    })
+    const updatedMessage = { messageId: updatedDoc.id, ...updatedDoc.data() } as unknown as ChatMessage
     
     console.log("[updateMessageAction] Message updated successfully")
     return {
@@ -175,24 +171,7 @@ export async function deleteMessageAction(
       return { isSuccess: false, message: "Database connection failed" }
     }
 
-    // Get the message first to get the chatId
-    const messageDoc = await db.collection(collections.messages).doc(messageId).get()
-    
-    if (!messageDoc.exists) {
-      console.log("[deleteMessageAction] Message not found with ID:", messageId)
-      return { isSuccess: false, message: "Message not found" }
-    }
-    
-    const message = messageDoc.data() as FirebaseMessage
-    
-    console.log("[deleteMessageAction] Deleting message document from Firestore")
     await db.collection(collections.messages).doc(messageId).delete()
-    
-    // Update the chat's updatedAt timestamp
-    console.log("[deleteMessageAction] Updating chat timestamp")
-    await db.collection(collections.chats).doc(message.chatId).update({
-      updatedAt: FieldValue.serverTimestamp()
-    })
     
     console.log("[deleteMessageAction] Message deleted successfully")
     return {
@@ -206,59 +185,12 @@ export async function deleteMessageAction(
   }
 }
 
-// Delete all messages in a chat
-export async function deleteChatMessagesAction(
-  chatId: string
-): Promise<ActionState<{ deletedCount: number }>> {
-  console.log("[deleteChatMessagesAction] Deleting all messages for chat:", chatId)
-  
-  try {
-    if (!db) {
-      console.error("[deleteChatMessagesAction] Firestore is not initialized")
-      return { isSuccess: false, message: "Database connection failed" }
-    }
-
-    // Get all messages for the chat
-    const messagesSnapshot = await db
-      .collection(collections.messages)
-      .where('chatId', '==', chatId)
-      .get()
-    
-    console.log("[deleteChatMessagesAction] Found", messagesSnapshot.size, "messages to delete")
-    
-    // Use batch delete for efficiency
-    const batch = db.batch()
-    messagesSnapshot.docs.forEach(doc => {
-      batch.delete(doc.ref)
-    })
-    
-    console.log("[deleteChatMessagesAction] Executing batch delete")
-    await batch.commit()
-    
-    // Update the chat's updatedAt timestamp
-    console.log("[deleteChatMessagesAction] Updating chat timestamp")
-    await db.collection(collections.chats).doc(chatId).update({
-      updatedAt: FieldValue.serverTimestamp()
-    })
-    
-    console.log("[deleteChatMessagesAction] All messages deleted successfully")
-    return {
-      isSuccess: true,
-      message: `Deleted ${messagesSnapshot.size} messages successfully`,
-      data: { deletedCount: messagesSnapshot.size }
-    }
-  } catch (error) {
-    console.error("[deleteChatMessagesAction] Error deleting chat messages:", error)
-    return { isSuccess: false, message: "Failed to delete messages" }
-  }
-}
-
-// Get paginated messages for a chat
+// Get messages with pagination
 export async function getChatMessagesPaginatedAction(
   chatId: string,
-  pageSize: number = 50,
-  startAfterMessageId?: string
-): Promise<ActionState<{ messages: FirebaseMessage[]; hasMore: boolean }>> {
+  pageSize: number = 20,
+  lastMessageId?: string
+): Promise<ActionState<{ messages: ChatMessage[]; hasMore: boolean }>> {
   console.log("[getChatMessagesPaginatedAction] Fetching paginated messages for chat:", chatId)
   
   try {
@@ -270,26 +202,32 @@ export async function getChatMessagesPaginatedAction(
     let query = db
       .collection(collections.messages)
       .where('chatId', '==', chatId)
-      .orderBy('createdAt', 'asc')
+      .orderBy('timestamp', 'desc')
       .limit(pageSize + 1) // Get one extra to check if there are more
     
-    // If we have a starting point, start after that message
-    if (startAfterMessageId) {
-      console.log("[getChatMessagesPaginatedAction] Starting after message:", startAfterMessageId)
-      const startAfterDoc = await db.collection(collections.messages).doc(startAfterMessageId).get()
-      if (startAfterDoc.exists) {
-        query = query.startAfter(startAfterDoc)
+    // If we have a last message ID, start after it
+    if (lastMessageId) {
+      const lastDoc = await db.collection(collections.messages).doc(lastMessageId).get()
+      if (lastDoc.exists) {
+        query = query.startAfter(lastDoc)
       }
     }
     
     const snapshot = await query.get()
     
-    const messages = snapshot.docs.slice(0, pageSize).map(doc => ({
-      id: doc.id,
+    let messages = snapshot.docs.map(doc => ({
+      messageId: doc.id,
       ...doc.data()
-    })) as FirebaseMessage[]
+    })) as unknown as ChatMessage[]
     
-    const hasMore = snapshot.docs.length > pageSize
+    // Check if there are more messages
+    const hasMore = messages.length > pageSize
+    if (hasMore) {
+      messages = messages.slice(0, pageSize)
+    }
+    
+    // Reverse to get chronological order
+    messages.reverse()
     
     console.log("[getChatMessagesPaginatedAction] Fetched", messages.length, "messages, hasMore:", hasMore)
     

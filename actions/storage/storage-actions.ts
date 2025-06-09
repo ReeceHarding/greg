@@ -11,6 +11,11 @@ export async function uploadFileStorageAction(
 ): Promise<ActionState<{ path: string; url: string }>> {
   console.log('[Storage Action] Uploading file to:', path)
   
+  if (!adminStorage) {
+    console.error('[Storage Action] Firebase Storage is not initialized')
+    return { isSuccess: false, message: "Storage service not available" }
+  }
+  
   try {
     const file = adminStorage.bucket(bucket).file(path)
     
@@ -47,6 +52,11 @@ export async function downloadFileStorageAction(
 ): Promise<ActionState<{ url: string }>> {
   console.log('[Storage Action] Downloading file from:', path)
   
+  if (!adminStorage) {
+    console.error('[Storage Action] Firebase Storage is not initialized')
+    return { isSuccess: false, message: "Storage service not available" }
+  }
+  
   try {
     const file = adminStorage.bucket(bucket).file(path)
     
@@ -82,6 +92,11 @@ export async function deleteFileStorageAction(
 ): Promise<ActionState<void>> {
   console.log('[Storage Action] Deleting file:', path)
   
+  if (!adminStorage) {
+    console.error('[Storage Action] Firebase Storage is not initialized')
+    return { isSuccess: false, message: "Storage service not available" }
+  }
+  
   try {
     const file = adminStorage.bucket(bucket).file(path)
     
@@ -116,6 +131,11 @@ export async function listFilesStorageAction(
 ): Promise<ActionState<string[]>> {
   console.log('[Storage Action] Listing files with prefix:', prefix)
   
+  if (!adminStorage) {
+    console.error('[Storage Action] Firebase Storage is not initialized')
+    return { isSuccess: false, message: "Storage service not available" }
+  }
+  
   try {
     const [files] = await adminStorage.bucket(bucket).getFiles({
       prefix: prefix
@@ -145,6 +165,11 @@ export async function getFileMetadataStorageAction(
   updated: string
 }>> {
   console.log('[Storage Action] Getting metadata for:', path)
+  
+  if (!adminStorage) {
+    console.error('[Storage Action] Firebase Storage is not initialized')
+    return { isSuccess: false, message: "Storage service not available" }
+  }
   
   try {
     const file = adminStorage.bucket(bucket).file(path)

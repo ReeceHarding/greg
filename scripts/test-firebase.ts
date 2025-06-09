@@ -3,7 +3,7 @@
  * Run with: npm run test:firebase
  */
 
-import { adminApp, adminAuth, adminDb, adminStorage } from "../lib/firebase-config"
+import { adminAuth, adminDb, adminStorage } from "../lib/firebase-config"
 
 async function testFirebase() {
   console.log("\n🔍 Testing Firebase Connection\n")
@@ -13,11 +13,15 @@ async function testFirebase() {
     // Test Firebase Admin SDK initialization
     console.log("1. Testing Firebase Admin SDK...")
     
-    if (adminApp) {
+    if (adminAuth || adminDb || adminStorage) {
       console.log("✅ Firebase Admin SDK initialized successfully")
-      console.log(`   Project ID: ${adminApp.options.projectId}`)
+      console.log("   Services available:")
+      if (adminAuth) console.log("   - Authentication")
+      if (adminDb) console.log("   - Firestore")
+      if (adminStorage) console.log("   - Storage")
     } else {
       console.log("❌ Firebase Admin SDK not initialized")
+      console.log("   Please check your service account configuration")
     }
 
     // Test Firestore connection
@@ -73,12 +77,16 @@ async function testFirebase() {
     console.log("\n4. Testing Firebase Storage...")
     if (adminStorage) {
       try {
-        const [buckets] = await adminStorage.getBuckets()
-        if (buckets && buckets.length > 0) {
+        // Try to get the default bucket
+        const bucket = adminStorage.bucket()
+        const [exists] = await bucket.exists()
+        
+        if (exists) {
           console.log("✅ Firebase Storage connected!")
-          console.log(`   Default bucket: ${buckets[0].name}`)
+          console.log(`   Default bucket: ${bucket.name}`)
         } else {
-          console.log("⚠️  Firebase Storage initialized but no buckets found")
+          console.log("⚠️  Firebase Storage initialized but default bucket not found")
+          console.log("   Please check your Firebase Storage configuration")
         }
       } catch (storageError: any) {
         console.log("❌ Firebase Storage error:", storageError.message)
