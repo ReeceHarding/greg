@@ -7,169 +7,244 @@ import { FieldValue } from 'firebase-admin/firestore'
 
 // Create a new user
 export async function createUserAction(
-  data: Omit<FirebaseUser, 'id' | 'createdAt' | 'lastLoginAt'>
+  data: Omit<FirebaseUser, 'joinedAt' | 'lastActiveAt'>
 ): Promise<ActionState<FirebaseUser>> {
-  console.log("[createUserAction] Starting user creation with data:", { uid: data.uid, email: data.email })
-  
   try {
+    console.log("[Users Action] Creating user with UID:", data.uid)
+    
     if (!db) {
-      console.error("[createUserAction] Firestore is not initialized")
+      console.error("[Users Action] Firestore is not initialized")
       return { isSuccess: false, message: "Database connection failed" }
     }
-
+    
     const userData = {
       ...data,
-      createdAt: FieldValue.serverTimestamp(),
-      lastLoginAt: FieldValue.serverTimestamp()
+      joinedAt: FieldValue.serverTimestamp(),
+      lastActiveAt: FieldValue.serverTimestamp()
     }
     
-    console.log("[createUserAction] Creating user document in Firestore")
-    const docRef = await db.collection(collections.users).add(userData)
-    const newUser = await docRef.get()
-    const userWithId = { id: docRef.id, ...newUser.data() } as FirebaseUser
+    await db.collection(collections.users).doc(data.uid).set(userData)
     
-    console.log("[createUserAction] User created successfully with ID:", docRef.id)
+    const userDoc = await db.collection(collections.users).doc(data.uid).get()
+    const user = { ...userDoc.data() } as FirebaseUser
+    
+    console.log("[Users Action] User created successfully")
+    
     return {
       isSuccess: true,
       message: "User created successfully",
-      data: userWithId
+      data: user
     }
   } catch (error) {
-    console.error("[createUserAction] Error creating user:", error)
+    console.error("[Users Action] Error creating user:", error)
     return { isSuccess: false, message: "Failed to create user" }
   }
 }
 
-// Read a single user by ID
+// Get a user by UID
 export async function getUserAction(
-  userId: string
-): Promise<ActionState<FirebaseUser>> {
-  console.log("[getUserAction] Fetching user with ID:", userId)
-  
-  try {
-    if (!db) {
-      console.error("[getUserAction] Firestore is not initialized")
-      return { isSuccess: false, message: "Database connection failed" }
-    }
-
-    const doc = await db.collection(collections.users).doc(userId).get()
-    
-    if (!doc.exists) {
-      console.log("[getUserAction] User not found with ID:", userId)
-      return { isSuccess: false, message: "User not found" }
-    }
-    
-    const user = { id: doc.id, ...doc.data() } as FirebaseUser
-    console.log("[getUserAction] User fetched successfully")
-    
-    return {
-      isSuccess: true,
-      message: "User fetched successfully",
-      data: user
-    }
-  } catch (error) {
-    console.error("[getUserAction] Error fetching user:", error)
-    return { isSuccess: false, message: "Failed to fetch user" }
-  }
-}
-
-// Read user by Firebase UID
-export async function getUserByUidAction(
   uid: string
 ): Promise<ActionState<FirebaseUser>> {
-  console.log("[getUserByUidAction] Fetching user with UID:", uid)
-  
   try {
+    console.log("[Users Action] Getting user with UID:", uid)
+    
     if (!db) {
-      console.error("[getUserByUidAction] Firestore is not initialized")
+      console.error("[Users Action] Firestore is not initialized")
       return { isSuccess: false, message: "Database connection failed" }
     }
-
-    const snapshot = await db
-      .collection(collections.users)
-      .where('uid', '==', uid)
-      .limit(1)
-      .get()
     
-    if (snapshot.empty) {
-      console.log("[getUserByUidAction] User not found with UID:", uid)
+    const userDoc = await db.collection(collections.users).doc(uid).get()
+    
+    if (!userDoc.exists) {
+      console.log("[Users Action] User not found")
       return { isSuccess: false, message: "User not found" }
     }
     
-    const doc = snapshot.docs[0]
-    const user = { id: doc.id, ...doc.data() } as FirebaseUser
-    console.log("[getUserByUidAction] User fetched successfully")
+    const user = { ...userDoc.data() } as FirebaseUser
+    console.log("[Users Action] User retrieved successfully")
     
     return {
       isSuccess: true,
-      message: "User fetched successfully",
+      message: "User retrieved successfully",
       data: user
     }
   } catch (error) {
-    console.error("[getUserByUidAction] Error fetching user by UID:", error)
-    return { isSuccess: false, message: "Failed to fetch user" }
+    console.error("[Users Action] Error getting user:", error)
+    return { isSuccess: false, message: "Failed to get user" }
   }
 }
 
-// Update a user
-export async function updateUserAction(
-  userId: string,
-  data: Partial<Omit<FirebaseUser, 'id' | 'createdAt'>>
-): Promise<ActionState<FirebaseUser>> {
-  console.log("[updateUserAction] Updating user with ID:", userId)
-  
+// Get all users (admin only)
+export async function getAllUsersAction(): Promise<ActionState<FirebaseUser[]>> {
   try {
+    console.log("[Users Action] Getting all users")
+    
     if (!db) {
-      console.error("[updateUserAction] Firestore is not initialized")
+      console.error("[Users Action] Firestore is not initialized")
       return { isSuccess: false, message: "Database connection failed" }
     }
+    
+    const snapshot = await db.collection(collections.users).get()
+    const users = snapshot.docs.map(doc => ({ ...doc.data() } as FirebaseUser))
+    
+    console.log(`[Users Action] Retrieved ${users.length} users`)
+    
+    return {
+      isSuccess: true,
+      message: "Users retrieved successfully",
+      data: users
+    }
+  } catch (error) {
+    console.error("[Users Action] Error getting users:", error)
+    return { isSuccess: false, message: "Failed to get users" }
+  }
+}
 
-    const updateData = {
-      ...data,
-      lastLoginAt: FieldValue.serverTimestamp()
+// Get users by role
+export async function getUsersByRoleAction(
+  role: "student" | "admin"
+): Promise<ActionState<FirebaseUser[]>> {
+  try {
+    console.log("[Users Action] Getting users with role:", role)
+    
+    if (!db) {
+      console.error("[Users Action] Firestore is not initialized")
+      return { isSuccess: false, message: "Database connection failed" }
     }
     
-    console.log("[updateUserAction] Updating user document in Firestore")
-    await db.collection(collections.users).doc(userId).update(updateData)
+    const snapshot = await db
+      .collection(collections.users)
+      .where('role', '==', role)
+      .get()
     
-    const updatedDoc = await db.collection(collections.users).doc(userId).get()
-    const updatedUser = { id: updatedDoc.id, ...updatedDoc.data() } as FirebaseUser
+    const users = snapshot.docs.map(doc => ({ ...doc.data() } as FirebaseUser))
     
-    console.log("[updateUserAction] User updated successfully")
+    console.log(`[Users Action] Retrieved ${users.length} users with role ${role}`)
+    
+    return {
+      isSuccess: true,
+      message: "Users retrieved successfully",
+      data: users
+    }
+  } catch (error) {
+    console.error("[Users Action] Error getting users by role:", error)
+    return { isSuccess: false, message: "Failed to get users" }
+  }
+}
+
+// Update user
+export async function updateUserAction(
+  uid: string,
+  data: Partial<FirebaseUser>
+): Promise<ActionState<FirebaseUser>> {
+  try {
+    console.log("[Users Action] Updating user:", uid)
+    
+    if (!db) {
+      console.error("[Users Action] Firestore is not initialized")
+      return { isSuccess: false, message: "Database connection failed" }
+    }
+    
+    const updateData = {
+      ...data,
+      lastActiveAt: FieldValue.serverTimestamp()
+    }
+    
+    await db.collection(collections.users).doc(uid).update(updateData)
+    
+    const userDoc = await db.collection(collections.users).doc(uid).get()
+    const user = { ...userDoc.data() } as FirebaseUser
+    
+    console.log("[Users Action] User updated successfully")
+    
     return {
       isSuccess: true,
       message: "User updated successfully",
-      data: updatedUser
+      data: user
     }
   } catch (error) {
-    console.error("[updateUserAction] Error updating user:", error)
+    console.error("[Users Action] Error updating user:", error)
     return { isSuccess: false, message: "Failed to update user" }
   }
 }
 
-// Delete a user
-export async function deleteUserAction(
-  userId: string
-): Promise<ActionState<undefined>> {
-  console.log("[deleteUserAction] Deleting user with ID:", userId)
-  
+// Update user onboarding status
+export async function updateUserOnboardingAction(
+  uid: string,
+  onboardingUpdate: Partial<FirebaseUser['onboardingStatus']>
+): Promise<ActionState<FirebaseUser>> {
   try {
+    console.log("[Users Action] Updating user onboarding status:", uid)
+    
     if (!db) {
-      console.error("[deleteUserAction] Firestore is not initialized")
+      console.error("[Users Action] Firestore is not initialized")
       return { isSuccess: false, message: "Database connection failed" }
     }
-
-    console.log("[deleteUserAction] Deleting user document from Firestore")
-    await db.collection(collections.users).doc(userId).delete()
     
-    console.log("[deleteUserAction] User deleted successfully")
+    const userDoc = await db.collection(collections.users).doc(uid).get()
+    if (!userDoc.exists) {
+      return { isSuccess: false, message: "User not found" }
+    }
+    
+    const currentUser = userDoc.data() as FirebaseUser
+    const updatedOnboarding = {
+      ...currentUser.onboardingStatus,
+      ...onboardingUpdate
+    }
+    
+    // Check if all onboarding steps are complete
+    const allComplete = Object.values(updatedOnboarding).every(
+      value => value === true || value !== false
+    )
+    
+    if (allComplete && !updatedOnboarding.completedAt) {
+      updatedOnboarding.completedAt = FieldValue.serverTimestamp() as any
+    }
+    
+    await db.collection(collections.users).doc(uid).update({
+      onboardingStatus: updatedOnboarding,
+      lastActiveAt: FieldValue.serverTimestamp()
+    })
+    
+    const updatedDoc = await db.collection(collections.users).doc(uid).get()
+    const user = { ...updatedDoc.data() } as FirebaseUser
+    
+    console.log("[Users Action] Onboarding status updated successfully")
+    
+    return {
+      isSuccess: true,
+      message: "Onboarding status updated successfully",
+      data: user
+    }
+  } catch (error) {
+    console.error("[Users Action] Error updating onboarding status:", error)
+    return { isSuccess: false, message: "Failed to update onboarding status" }
+  }
+}
+
+// Delete user (admin only)
+export async function deleteUserAction(
+  uid: string
+): Promise<ActionState<undefined>> {
+  try {
+    console.log("[Users Action] Deleting user:", uid)
+    
+    if (!db) {
+      console.error("[Users Action] Firestore is not initialized")
+      return { isSuccess: false, message: "Database connection failed" }
+    }
+    
+    await db.collection(collections.users).doc(uid).delete()
+    
+    console.log("[Users Action] User deleted successfully")
+    
     return {
       isSuccess: true,
       message: "User deleted successfully",
       data: undefined
     }
   } catch (error) {
-    console.error("[deleteUserAction] Error deleting user:", error)
+    console.error("[Users Action] Error deleting user:", error)
     return { isSuccess: false, message: "Failed to delete user" }
   }
 } 
