@@ -51,7 +51,7 @@
     - [ ] GitHub repository link field (optional - for code submissions)
     - [ ] Written reflection text area (500 word limit) about weekly learnings
     - [ ] Supporting documents upload (screenshots, spreadsheets, etc.)
-  - [ ] Use a third-party calendar library (e.g., FullCalendar, react-big-calendar) for schedule display
+  - [ ] **Use shared Google Calendar embed for schedule display (NO custom calendar development)**
   - [ ] Track status for each submission: "Not Started", "In Progress", "Submitted", "Approved", "Needs Revision"
   - [ ] Use a charting library (e.g., Recharts, Chart.js) for progress bars and visualizations
 
@@ -65,7 +65,7 @@
 ### Live Sessions and Office Hours System
 - [ ] Build live video session system for weekly calls and office hours using Zoom links only
   - [ ] **NOTE: Simply provide manual Zoom links to students - no API integration needed**
-  - [ ] Create calendar displaying Zoom meeting links for upcoming office hours and weekly expert calls
+  - [ ] **Embed shared Google Calendar iframe showing upcoming office hours and weekly expert calls**
   - [ ] Implement session registration where students RSVP to receive Zoom meeting links
   - [ ] Send automated emails with Zoom meeting links 24 hours and 1 hour before each live session
   - [ ] Store recording links after sessions for students who missed the live call
