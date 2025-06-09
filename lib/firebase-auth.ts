@@ -106,11 +106,41 @@ export async function auth() {
   console.log("[Firebase Auth] Auth function called")
 
   const user = await getCurrentUser()
+  
+  if (!user) {
+    return {
+      userId: null,
+      user: null,
+      sessionClaims: null,
+      role: "student" as const
+    }
+  }
+
+  // Check if role is in custom claims
+  let role = user.role || "student"
+  
+  // If no role in claims, check admin status from database
+  if (!user.role && user.email) {
+    try {
+      const { isAdminEmailAction } = await import("@/actions/admin/admin-role-actions")
+      const adminCheckResult = await isAdminEmailAction(user.email)
+      if (adminCheckResult.isSuccess && adminCheckResult.data === true) {
+        role = "admin"
+        // Update the user object
+        user.role = "admin"
+      }
+    } catch (error) {
+      console.error("[Firebase Auth] Error checking admin status:", error)
+    }
+  }
 
   return {
-    userId: user?.uid || null,
-    user: user,
-    sessionClaims: user || null,
-    role: user?.role || "student"
+    userId: user.uid,
+    user: {
+      ...user,
+      customClaims: { role }
+    },
+    sessionClaims: user,
+    role: role as "admin" | "student"
   }
 }
