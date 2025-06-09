@@ -29,9 +29,7 @@ export default function SessionsClient({ sessions }: SessionsClientProps) {
   
   // Filter upcoming sessions
   const upcomingSessions = userSessions.filter(session => {
-    const sessionDate = session.scheduledAt ? 
-      (session.scheduledAt as any).toDate?.() || new Date(session.scheduledAt as any) : 
-      new Date()
+    const sessionDate = session.scheduledAt ? new Date(session.scheduledAt) : new Date()
     return sessionDate > new Date()
   })
   
@@ -77,7 +75,7 @@ export default function SessionsClient({ sessions }: SessionsClientProps) {
   
   // Format session date
   const formatSessionDate = (timestamp: any) => {
-    const date = timestamp?.toDate?.() || new Date(timestamp)
+    const date = timestamp ? new Date(timestamp) : new Date()
     return format(date, "EEE, MMM d, yyyy 'at' h:mm a")
   }
   
@@ -118,9 +116,7 @@ export default function SessionsClient({ sessions }: SessionsClientProps) {
             {upcomingSessions.map((session) => {
               const isRegistered = user ? session.registeredStudents.includes(user.uid) : false
               const zoomLink = getZoomLink(session)
-              const sessionDate = session.scheduledAt ? 
-                (session.scheduledAt as any).toDate?.() || new Date(session.scheduledAt as any) : 
-                new Date()
+              const sessionDate = session.scheduledAt ? new Date(session.scheduledAt) : new Date()
               const isLive = new Date() >= sessionDate && new Date() <= new Date(sessionDate.getTime() + session.duration * 60000)
               
               return (

@@ -132,7 +132,7 @@ export async function getUpcomingSessionsAction(): Promise<ActionState<Serialize
 // Get a single session by ID
 export async function getSessionAction(
   sessionId: string
-): Promise<ActionState<FirebaseLiveSession>> {
+): Promise<ActionState<SerializedFirebaseLiveSession>> {
   try {
     console.log("[Sessions Action] Getting session:", sessionId)
     
@@ -148,10 +148,10 @@ export async function getSessionAction(
       return { isSuccess: false, message: "Session not found" }
     }
     
-    const session = { 
+    const session = serializeSession({ 
       sessionId: doc.id, 
       ...doc.data() 
-    } as FirebaseLiveSession
+    })
     
     console.log("[Sessions Action] Session retrieved successfully")
     
@@ -170,7 +170,7 @@ export async function getSessionAction(
 export async function registerForSessionAction(
   sessionId: string,
   studentId: string
-): Promise<ActionState<FirebaseLiveSession>> {
+): Promise<ActionState<SerializedFirebaseLiveSession>> {
   try {
     console.log(`[Sessions Action] Registering student ${studentId} for session ${sessionId}`)
     
@@ -186,15 +186,15 @@ export async function registerForSessionAction(
       return { isSuccess: false, message: "Session not found" }
     }
     
-    const session = sessionDoc.data() as FirebaseLiveSession
+    const session = sessionDoc.data()
     
     // Check if already registered
-    if (session.registeredStudents.includes(studentId)) {
+    if (session?.registeredStudents?.includes(studentId)) {
       console.log("[Sessions Action] Student already registered")
       return {
         isSuccess: true,
         message: "Already registered for this session",
-        data: { ...session, sessionId } as FirebaseLiveSession
+        data: serializeSession({ ...session, sessionId })
       }
     }
     
@@ -206,10 +206,10 @@ export async function registerForSessionAction(
     
     // Get updated session
     const updatedDoc = await db.collection(collections.liveSessions).doc(sessionId).get()
-    const updatedSession = { 
+    const updatedSession = serializeSession({ 
       sessionId: updatedDoc.id, 
       ...updatedDoc.data() 
-    } as FirebaseLiveSession
+    })
     
     console.log("[Sessions Action] Student registered successfully")
     
@@ -228,7 +228,7 @@ export async function registerForSessionAction(
 export async function unregisterFromSessionAction(
   sessionId: string,
   studentId: string
-): Promise<ActionState<FirebaseLiveSession>> {
+): Promise<ActionState<SerializedFirebaseLiveSession>> {
   try {
     console.log(`[Sessions Action] Unregistering student ${studentId} from session ${sessionId}`)
     
@@ -245,10 +245,10 @@ export async function unregisterFromSessionAction(
     
     // Get updated session
     const updatedDoc = await db.collection(collections.liveSessions).doc(sessionId).get()
-    const updatedSession = { 
+    const updatedSession = serializeSession({ 
       sessionId: updatedDoc.id, 
       ...updatedDoc.data() 
-    } as FirebaseLiveSession
+    })
     
     console.log("[Sessions Action] Student unregistered successfully")
     
@@ -267,7 +267,7 @@ export async function unregisterFromSessionAction(
 export async function markAttendanceAction(
   sessionId: string,
   studentId: string
-): Promise<ActionState<FirebaseLiveSession>> {
+): Promise<ActionState<SerializedFirebaseLiveSession>> {
   try {
     console.log(`[Sessions Action] Marking attendance for student ${studentId} in session ${sessionId}`)
     
@@ -284,10 +284,10 @@ export async function markAttendanceAction(
     
     // Get updated session
     const updatedDoc = await db.collection(collections.liveSessions).doc(sessionId).get()
-    const updatedSession = { 
+    const updatedSession = serializeSession({ 
       sessionId: updatedDoc.id, 
       ...updatedDoc.data() 
-    } as FirebaseLiveSession
+    })
     
     console.log("[Sessions Action] Attendance marked successfully")
     
@@ -306,7 +306,7 @@ export async function markAttendanceAction(
 export async function updateSessionAction(
   sessionId: string,
   data: Partial<Omit<FirebaseLiveSession, 'sessionId' | 'createdAt'>>
-): Promise<ActionState<FirebaseLiveSession>> {
+): Promise<ActionState<SerializedFirebaseLiveSession>> {
   try {
     console.log("[Sessions Action] Updating session:", sessionId)
     
@@ -323,10 +323,10 @@ export async function updateSessionAction(
     await db.collection(collections.liveSessions).doc(sessionId).update(updateData)
     
     const doc = await db.collection(collections.liveSessions).doc(sessionId).get()
-    const session = { 
+    const session = serializeSession({ 
       sessionId: doc.id, 
       ...doc.data() 
-    } as FirebaseLiveSession
+    })
     
     console.log("[Sessions Action] Session updated successfully")
     
