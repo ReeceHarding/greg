@@ -4,6 +4,7 @@ import { db, collections } from "@/db/db"
 import { FirebaseVideo, TranscriptChunk } from "@/types/firebase-types"
 import { ActionState } from "@/types"
 import { FieldValue } from 'firebase-admin/firestore'
+import { Innertube } from 'youtubei.js'
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY
 const API_BASE_URL = "https://www.googleapis.com/youtube/v3"
@@ -62,34 +63,125 @@ async function getCaptionTracks(videoId: string): Promise<CaptionTrack[]> {
   }
 }
 
+// Extract transcript using youtubei.js
+async function extractTranscriptUsingYouTubei(videoId: string): Promise<{ text: string; chunks: TranscriptChunk[] } | null> {
+  try {
+    console.log(`[Transcript Extract] Extracting transcript using youtubei.js for: ${videoId}`)
+    
+    // Create YouTube client
+    const youtube = await Innertube.create()
+    
+    // Get video info
+    const info = await youtube.getInfo(videoId)
+    
+    // Get transcript
+    const transcriptData = await info.getTranscript()
+    
+    if (!transcriptData) {
+      console.log(`[Transcript Extract] No transcript found for video: ${videoId}`)
+      return null
+    }
+    
+    // Get transcript segments from the transcript data
+    const segments = transcriptData.transcript?.content?.body?.initial_segments || []
+    
+    if (segments.length === 0) {
+      console.log(`[Transcript Extract] No transcript segments found for video: ${videoId}`)
+      return null
+    }
+    
+    // Combine all transcript segments into full text
+    const fullText = segments.map((segment: any) => segment.snippet?.text || '').join(' ')
+    
+    // Create chunks with timing information
+    const chunks: TranscriptChunk[] = []
+    let currentChunk = ''
+    let chunkStartTime = 0
+    let chunkIndex = 0
+    let currentSegmentIndex = 0
+    
+    for (const segment of segments) {
+      const text = (segment.snippet?.text || '').trim()
+      const startMs = parseInt(segment.start_ms || '0')
+      const startSeconds = startMs / 1000
+      
+      // If adding this text would exceed chunk size, save current chunk
+      if (currentChunk.length + text.length > CHUNK_SIZE && currentChunk.length > 0) {
+        const previousSegment = segments[currentSegmentIndex - 1]
+        const endMs = previousSegment ? parseInt(previousSegment.end_ms || previousSegment.start_ms || '0') : startMs
+        
+        chunks.push({
+          chunkId: `${videoId}_chunk_${chunkIndex}`,
+          text: currentChunk.trim(),
+          startTime: chunkStartTime,
+          endTime: endMs / 1000,
+        })
+        
+        // Start new chunk with overlap
+        const overlapText = currentChunk.split(' ').slice(-10).join(' ') // Last 10 words
+        currentChunk = overlapText + ' ' + text
+        chunkStartTime = startSeconds
+        chunkIndex++
+      } else {
+        if (currentChunk.length === 0) {
+          chunkStartTime = startSeconds
+        }
+        currentChunk += (currentChunk.length > 0 ? ' ' : '') + text
+      }
+      
+      currentSegmentIndex++
+    }
+    
+    // Don't forget the last chunk
+    if (currentChunk.trim().length > 0) {
+      const lastSegment = segments[segments.length - 1]
+      const endMs = parseInt(lastSegment.end_ms || lastSegment.start_ms || '0')
+      
+      chunks.push({
+        chunkId: `${videoId}_chunk_${chunkIndex}`,
+        text: currentChunk.trim(),
+        startTime: chunkStartTime,
+        endTime: endMs / 1000,
+      })
+    }
+    
+    console.log(`[Transcript Extract] Successfully extracted ${fullText.length} characters in ${chunks.length} chunks`)
+    
+    return {
+      text: fullText,
+      chunks
+    }
+    
+  } catch (error: any) {
+    console.error(`[Transcript Extract] Error extracting transcript:`, error)
+    
+    // Handle specific error cases
+    if (error.message?.includes('not available') || error.message?.includes('Transcript')) {
+      console.log(`[Transcript Extract] No transcript available for video: ${videoId}`)
+      return null
+    }
+    
+    throw error
+  }
+}
+
 // Since we can't directly download captions without OAuth, we'll use an alternative approach
 // This function attempts to extract transcript using YouTube's oEmbed API and page scraping as a fallback
 async function extractTranscriptAlternative(videoId: string): Promise<{ text: string; chunks: TranscriptChunk[] } | null> {
   try {
-    console.log(`[Transcript Extract] Attempting alternative transcript extraction for: ${videoId}`)
+    // First try using youtubei.js
+    const transcriptData = await extractTranscriptUsingYouTubei(videoId)
     
-    // Try to get transcript from YouTube's public API endpoints
-    // Note: This is a simplified approach. In production, you might want to:
-    // 1. Use OAuth to properly access the captions.download endpoint
-    // 2. Use a third-party service that provides transcript extraction
-    // 3. Implement a more sophisticated scraping approach
-    
-    // For now, we'll create a placeholder that indicates transcript needs manual extraction
-    const placeholderText = `Transcript pending extraction for video ${videoId}. 
-    To fully implement transcript extraction, consider:
-    1. Setting up OAuth 2.0 for accessing private caption data
-    2. Using a third-party transcript service
-    3. Implementing server-side extraction with proper authentication`
-    
-    const chunks = createTranscriptChunks(placeholderText, videoId)
-    
-    return {
-      text: placeholderText,
-      chunks
+    if (transcriptData) {
+      return transcriptData
     }
     
+    // If that fails, return a message indicating no transcript is available
+    console.log(`[Transcript Extract] No transcript available for video: ${videoId}`)
+    return null
+    
   } catch (error) {
-    console.error(`[Transcript Extract] Error in alternative extraction:`, error)
+    console.error(`[Transcript Extract] Error in transcript extraction:`, error)
     return null
   }
 }
@@ -207,7 +299,18 @@ export async function extractVideoTranscriptAction(videoId: string): Promise<Act
     const transcriptData = await extractTranscriptAlternative(videoId)
     
     if (!transcriptData) {
-      return { isSuccess: false, message: "Failed to extract transcript" }
+      // No transcript available - update video to indicate this
+      await db.collection(collections.videos).doc(videoId).update({
+        transcript: '',
+        transcriptChunks: [],
+        lastUpdatedAt: FieldValue.serverTimestamp()
+      })
+      
+      return {
+        isSuccess: true,
+        message: "No transcript available for this video",
+        data: { hasTranscript: false }
+      }
     }
     
     // Update video document with transcript

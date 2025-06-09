@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MessageSquare, Clock, Eye, Calendar, Hash } from "lucide-react"
+import { MessageSquare, Clock, Eye, Calendar, Hash, ExternalLink } from "lucide-react"
 import { format } from "date-fns"
 
 interface VideoDetailClientProps {
@@ -40,8 +40,9 @@ export default function VideoDetailClient({ video }: VideoDetailClientProps) {
     router.push(`/dashboard/chat?videoId=${video.videoId}`)
   }
   
-  // Parse published date
+  // Parse published date - handle potential invalid dates
   const publishedDate = video.publishedAt ? new Date(video.publishedAt) : new Date()
+  const isValidDate = publishedDate instanceof Date && !isNaN(publishedDate.getTime())
   
   return (
     <div className="space-y-6">
@@ -66,17 +67,29 @@ export default function VideoDetailClient({ video }: VideoDetailClientProps) {
               <CardTitle className="text-2xl">{video.title}</CardTitle>
               <CardDescription className="mt-2">{video.channelTitle}</CardDescription>
             </div>
-            <Button onClick={handleAskAI} className="shrink-0">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Ask AI Assistant
-            </Button>
+            <div className="flex gap-2">
+              {video.videoUrl && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open(video.videoUrl, '_blank')}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open on YouTube
+                </Button>
+              )}
+              <Button onClick={handleAskAI} className="shrink-0">
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Ask AI Assistant
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4 mb-4">
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              {format(publishedDate, "MMM d, yyyy")}
+              {isValidDate ? format(publishedDate, "MMM d, yyyy") : "Date unavailable"}
             </div>
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />

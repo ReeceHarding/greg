@@ -283,6 +283,7 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
             thumbnailUrl: item.snippet.thumbnails?.high?.url || 
                          item.snippet.thumbnails?.medium?.url || 
                          item.snippet.thumbnails?.default?.url || '',
+            videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
             duration: details.duration,
             publishedAt: publishedDate as any,
             channelId: item.snippet.channelId,
@@ -299,6 +300,7 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
               title: videoData.title,
               description: videoData.description,
               thumbnailUrl: videoData.thumbnailUrl,
+              videoUrl: videoData.videoUrl,
               duration: videoData.duration,
               publishedAt: publishedDate,
               channelId: videoData.channelId,
@@ -317,6 +319,7 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
               title: videoData.title,
               description: videoData.description,
               thumbnailUrl: videoData.thumbnailUrl,
+              videoUrl: videoData.videoUrl,
               duration: videoData.duration,
               publishedAt: publishedDate,
               channelId: videoData.channelId,

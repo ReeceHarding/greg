@@ -30,6 +30,7 @@ export interface FirebaseVideo {
   title: string
   description: string
   thumbnailUrl: string
+  videoUrl: string // YouTube video URL
   duration: number // seconds
   publishedAt: Timestamp
   channelId: string
