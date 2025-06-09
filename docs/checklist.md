@@ -32,14 +32,14 @@
   - [ ] Set up YouTube Data API v3 with API key and configure quota management
   - [ ] Create Cloud Function that fetches all videos from Greg Isenberg's channel ID and stores metadata in Firestore
   - [ ] Implement automatic transcript extraction using YouTube's caption API and store in Firestore
-  - [ ] Build embedded YouTube player with programmatic control for jumping to specific timestamps
+  - [ ] Use YouTube's iframe API for embedding videos with timestamp control (no custom player needed)
   - [ ] Create clickable timestamp UI elements formatted as "Watch from 14:23 to 18:45" that control video playback
 
 - [ ] Develop Claude 4 Sonnet chatbot that analyzes video transcripts and suggests relevant timestamps
   - [ ] Build chat interface in student dashboard with message history and real-time typing indicators
   - [ ] Integrate Anthropic Claude API with proper authentication and rate limiting
   - [ ] Implement transcript chunking strategy to work within Claude's 200k token context limit
-  - [ ] Create vector database using Firebase Extensions or Pinecone to enable semantic search across all transcripts
+  - [ ] Use Pinecone or another vector database service (not custom built) for semantic transcript search
   - [ ] Parse Claude responses to extract timestamp ranges and format them as clickable video links
 
 - [ ] Create AI-powered learning path system that builds custom video playlists
@@ -52,10 +52,10 @@
 
 - [ ] Build assignment system organized around weekly entrepreneurship themes
   - [ ] Create weekly modules with clear themes: "Finding Your Niche", "Building Your MVP", "Launch Strategy", "Scaling Revenue"
-  - [ ] Design calendar showing current week's video playlist, assignments due, and live session times
+  - [ ] Use a third-party calendar library (e.g., FullCalendar, react-big-calendar) for schedule display
   - [ ] Implement assignment types: business plan drafts, website launches, revenue reports, automation workflows
   - [ ] Track status for each submission: "Not Started", "In Progress", "Submitted", "Approved", "Needs Revision"
-  - [ ] Display weekly and overall progress bars showing percentage of completed assignments
+  - [ ] Use a charting library (e.g., Recharts, Chart.js) for progress bars and visualizations
   - [ ] Show estimated time remaining for program completion based on student's pace
 
 - [ ] Create AI-powered insights dashboard for student progress
@@ -71,7 +71,7 @@
   - [ ] Create Cloud Function triggers for missed assignment deadlines
   - [ ] Implement email notifications for upcoming due dates with customizable reminder periods
   - [ ] Build notification system for when instructors provide feedback on submissions
-  - [ ] Design email templates with consistent branding and clear call-to-actions
+  - [ ] Use an email template service (e.g., SendGrid, React Email) for branded email templates
 
 - [ ] Integrate chatbot for personalized progress queries
   - [ ] Extend AI chatbot to answer questions like "What assignments do I have due this week?"
@@ -101,22 +101,22 @@
 
 ## Collaborative Forum System
 
-- [ ] Build threaded discussion forum for student collaboration
-  - [ ] Create forum homepage displaying topic categories and recent activity
-  - [ ] Implement thread creation with rich text editor for formatting
-  - [ ] Build nested comment system supporting replies to specific posts
-  - [ ] Add upvoting functionality with vote counts and sorting by popularity
-  - [ ] Implement topic categorization system for easy content discovery
-  - [ ] Create search functionality to find discussions on specific subjects
-  - [ ] Add user profiles showing forum contributions and reputation
+- [ ] Integrate a third-party forum solution or use a forum library for student discussions
+  - [ ] Consider using Discourse API, Forem, or a React forum component library
+  - [ ] Configure categories for different topics (business ideas, technical help, marketing)
+  - [ ] Enable rich text posting using the chosen forum's built-in editor
+  - [ ] Configure the forum's built-in threading and reply system
+  - [ ] Use the forum's native voting/reaction features
+  - [ ] Set up the forum's search functionality
+  - [ ] Configure user profiles to sync with Firebase Auth
 
 ## Live Sessions and Office Hours System
 
 - [ ] Build live video session system for weekly calls and office hours
-  - [ ] Integrate video conferencing solution (Zoom API or similar) for hosting live sessions
+  - [ ] Use Zoom SDK/API to generate meeting links for live sessions (no custom video conferencing)
   - [ ] Create calendar system showing upcoming office hours with instructor and weekly expert calls
   - [ ] Implement session registration allowing students to RSVP for limited-capacity sessions
-  - [ ] Build automatic recording system that saves all sessions to Firebase Storage
+  - [ ] Use Zoom's cloud recording feature and store recording URLs in Firebase (no custom recording)
   - [ ] Create session replay interface where students can watch missed sessions with playback controls
   - [ ] Send automated email reminders 24 hours and 1 hour before each live session
 
@@ -139,8 +139,8 @@
 
 - [ ] Create flexible submission system supporting entrepreneurship-focused assignments
   - [ ] Build submission form accepting: live website URLs, GitHub repos, video demos, business metrics screenshots
-  - [ ] Implement drag-and-drop for files with support for PDFs, images, ZIP files up to 100MB
-  - [ ] Create rich text editor for business plans, marketing strategies, and reflection responses
+  - [ ] Use a third-party drag-and-drop file upload library (e.g., react-dropzone) for file uploads
+  - [ ] Use a third-party rich text editor library (e.g., Quill, TinyMCE) for business plans and reflections
   - [ ] Add special fields for n8n workflow exports and automation documentation
   - [ ] Include revenue proof upload for assignments requiring business validation
   - [ ] Build submission preview before final submit with ability to edit
@@ -196,7 +196,7 @@
 - [ ] Build automated certificate system for program completion
   - [ ] Create certificate template with professional design including student name, completion date, and unique ID
   - [ ] Define completion requirements: minimum revenue generated ($X), all core assignments completed, attendance at Y% of live sessions
-  - [ ] Generate PDF certificates automatically when students meet all requirements
+  - [ ] Use a PDF generation library (e.g., jsPDF, Puppeteer) to create certificates automatically
   - [ ] Store certificates in Firebase Storage with unique verification URLs
   - [ ] Create public verification page where anyone can verify certificate authenticity
   - [ ] Send congratulatory email with certificate attached when earned
@@ -214,7 +214,7 @@
 ## Mobile Responsive Implementation
 
 - [ ] Ensure all platform features work seamlessly on mobile devices
-  - [ ] Implement responsive design for student dashboard, video player, and chat interface
+  - [ ] Implement responsive design for student dashboard, YouTube embeds, and chat interface
   - [ ] Create mobile-optimized navigation with hamburger menu and touch gestures
   - [ ] Ensure assignment submission works on mobile with camera integration for screenshots
   - [ ] Optimize video playback for mobile bandwidth and screen sizes
