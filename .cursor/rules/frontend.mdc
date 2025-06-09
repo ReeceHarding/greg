@@ -1,7 +1,7 @@
 ---
-description: Follow these rules when working on the frontend.
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # Frontend Style Guide
 
@@ -15,16 +15,16 @@ In addition, all text must remain fully legible over button backgrounds, even on
 
 
 ## Table of Contents
-1. [Core Design Principles](#core-design-principles)
-2. [Color System](#color-system)
-3. [Typography](#typography)
-4. [Spacing & Layout](#spacing--layout)
-5. [Component Library](#component-library)
-6. [Interactive States](#interactive-states)
-7. [Animations & Transitions](#animations--transitions)
-8. [Shadow System](#shadow-system)
-9. [Responsive Design](#responsive-design)
-10. [Best Practices](#best-practices)
+1. [Core Design Principles](mdc:#core-design-principles)
+2. [Color System](mdc:#color-system)
+3. [Typography](mdc:#typography)
+4. [Spacing & Layout](mdc:#spacing--layout)
+5. [Component Library](mdc:#component-library)
+6. [Interactive States](mdc:#interactive-states)
+7. [Animations & Transitions](mdc:#animations--transitions)
+8. [Shadow System](mdc:#shadow-system)
+9. [Responsive Design](mdc:#responsive-design)
+10. [Best Practices](mdc:#best-practices)
 
 ## Core Design Principles
 
@@ -512,12 +512,6 @@ className="block md:hidden"  // Show only on mobile
 - Lazy load images and videos
 - Use `loading="lazy"` for images below the fold
 
-### 3. **Accessibility**
-- Always include hover and focus states
-- Use proper color contrast ratios
-- Include ARIA labels where needed
-- Make interactive elements at least 44x44px
-
 ### 4. **Code Organization**
 ```typescript
 // Order classes logically
@@ -636,6 +630,32 @@ Make every interface element completely self-explanatory. If a user has to think
 - Ensure sufficient contrast for all text
 - Test with actual users who have never seen the interface before
 - If you need to explain how something works, the design needs improvement
+
+For Next JS apps, prioritize speed and user experience by:
+
+Immediate Shell Rendering: Build the page layout with static elements (header, navigation, skeleton UI) that render instantly on the client without waiting for data
+
+Progressive Data Loading: Use React hooks (useState, useEffect) or SWR/React Query to fetch data after the initial render, allowing the page shell to appear immediately
+
+Loading States: Implement skeleton screens or loading indicators for data dependent sections while keeping the main layout interactive
+
+Code Splitting: Use dynamic imports for heavy components that aren't needed for the initial view
+
+Streaming Content: Load critical above the fold content first, then progressively load below the fold sections
+
+Structure your implementation to:
+
+Show navigation and page structure within 100ms
+
+Display loading placeholders for data sections
+
+Fetch and populate data asynchronously
+
+Maintain smooth user interactions during loading
+
+Handle loading and error states gracefully
+
+Focus on perceived performance where users see something useful immediately rather than waiting for all data to load before showing anything.
 
 The interface should work intuitively for someone using it for the first time without any training or documentation.
 

@@ -122,6 +122,15 @@ export default async function VideosPage() {
                   >
                 {/* Video Thumbnail */}
                 <div className="relative aspect-video bg-gradient-to-br from-muted to-muted/80 overflow-hidden">
+                  {/* Actual Thumbnail Image */}
+                  {video.thumbnailUrl && (
+                    <img 
+                      src={video.thumbnailUrl} 
+                      alt={video.title}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  
                   {/* Play Button Overlay */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
