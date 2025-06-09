@@ -8,12 +8,23 @@ import { db, collections } from "@/db/db"
 // Initialize Pinecone client
 let pineconeClient: Pinecone | null = null
 
-function getPineconeClient(): Pinecone {
+function getPineconeClient(): Pinecone | null {
   if (!pineconeClient) {
     console.log("[Pinecone Actions] Initializing Pinecone client")
-    pineconeClient = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY!
-    })
+    
+    if (!process.env.PINECONE_API_KEY) {
+      console.warn("[Pinecone Actions] PINECONE_API_KEY not configured")
+      return null
+    }
+    
+    try {
+      pineconeClient = new Pinecone({
+        apiKey: process.env.PINECONE_API_KEY
+      })
+    } catch (error) {
+      console.error("[Pinecone Actions] Failed to initialize Pinecone client:", error)
+      return null
+    }
   }
   return pineconeClient
 }
@@ -95,6 +106,11 @@ export async function storeTranscriptChunksAction(
   
   try {
     const pc = getPineconeClient()
+    if (!pc) {
+      console.warn("[Pinecone Actions] Pinecone client not available - chunks will not be indexed")
+      return { isSuccess: false, message: "Vector indexing not configured" }
+    }
+    
     const index = pc.index(process.env.PINECONE_INDEX_NAME!)
     
     // Process in batches to avoid rate limits
@@ -154,6 +170,12 @@ export async function searchTranscriptChunksAction(
   
   try {
     const pc = getPineconeClient()
+    if (!pc) {
+      console.warn("[Pinecone Actions] Pinecone client not available - using database fallback")
+      // Skip to database fallback below
+      throw new Error("Pinecone not configured")
+    }
+    
     const index = pc.index(process.env.PINECONE_INDEX_NAME!)
     
     // Generate embedding for query
@@ -227,6 +249,11 @@ export async function deleteVideoVectorsAction(
   
   try {
     const pc = getPineconeClient()
+    if (!pc) {
+      console.warn("[Pinecone Actions] Pinecone client not available - cannot delete vectors")
+      return { isSuccess: false, message: "Vector deletion not available" }
+    }
+    
     const index = pc.index(process.env.PINECONE_INDEX_NAME!)
     
     // Delete all vectors with this videoId

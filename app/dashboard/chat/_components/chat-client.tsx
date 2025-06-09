@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { createChatMessageAction, getUserChatsAction } from "@/actions/db/chat-actions"
 import { getVideoByIdAction } from "@/actions/videos/video-actions"
 import { SerializedFirebaseVideo } from "@/types/firebase-types"
+import { toast } from "@/hooks/use-toast"
 
 interface Message {
   id: string
@@ -25,13 +26,74 @@ export default function ChatClient({ userId }: ChatClientProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [video, setVideo] = useState<SerializedFirebaseVideo | null>(null)
-  const [chatId, setChatId] = useState<string>(`chat_${userId}_${Date.now()}`)
+  const [chatId, setChatId] = useState<string>("")
+  const [error, setError] = useState<string | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   
   console.log("[ChatClient] Rendering with userId:", userId, "videoId:", videoId)
+  
+  // Generate or load chat ID
+  useEffect(() => {
+    async function initializeChat() {
+      setIsInitializing(true)
+      
+      // Generate a consistent chatId based on context
+      const dateKey = new Date().toISOString().split('T')[0]
+      const contextKey = videoId || 'general'
+      const newChatId = `chat_${userId}_${contextKey}_${dateKey}`
+      
+      console.log("[ChatClient] Initializing with chatId:", newChatId)
+      
+      // Try to load existing chat for today
+      try {
+        const result = await getUserChatsAction(userId)
+        
+        if (result.isSuccess && result.data && result.data.length > 0) {
+          // Find a chat for today with the same context
+          const todayChat = result.data.find(chat => {
+            const chatType = videoId ? "video_learning" : "progress_assistant"
+            const isSameType = chat.type === chatType
+            const isSameContext = videoId ? chat.messages.some(m => m.videoReferences?.some(ref => ref.videoId === videoId)) : true
+            const isToday = chat.chatId.includes(dateKey)
+            
+            return isSameType && isSameContext && isToday
+          })
+          
+          if (todayChat) {
+            console.log("[ChatClient] Found existing chat for today:", todayChat.chatId)
+            setChatId(todayChat.chatId)
+            
+            // Load messages from the existing chat
+            const loadedMessages: Message[] = todayChat.messages.map((msg, index) => ({
+              id: `msg-${index}`,
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+              timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date()
+            }))
+            
+            setMessages(loadedMessages)
+          } else {
+            setChatId(newChatId)
+          }
+        } else {
+          setChatId(newChatId)
+        }
+      } catch (error) {
+        console.error("[ChatClient] Error loading chat history:", error)
+        setChatId(newChatId)
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+    
+    if (userId) {
+      initializeChat()
+    }
+  }, [userId, videoId])
   
   // Load video context if videoId is provided
   useEffect(() => {
@@ -49,44 +111,6 @@ export default function ChatClient({ userId }: ChatClientProps) {
     
     loadVideo()
   }, [videoId])
-  
-  // Load chat history
-  useEffect(() => {
-    async function loadChatHistory() {
-      console.log("[ChatClient] Loading chat history for user:", userId)
-      
-      try {
-        const result = await getUserChatsAction(userId)
-        
-        if (result.isSuccess && result.data && result.data.length > 0) {
-          console.log("[ChatClient] Found", result.data.length, "chats")
-          // Get the most recent chat that's not video-specific
-          const recentChat = result.data.find(chat => chat.type === "progress_assistant")
-          
-          if (recentChat && recentChat.messages && recentChat.messages.length > 0) {
-            console.log("[ChatClient] Loading recent chat with", recentChat.messages.length, "messages")
-            setChatId(recentChat.chatId)
-            
-            // Convert chat messages to UI format
-            const loadedMessages: Message[] = recentChat.messages.map((msg, index) => ({
-              id: `msg-${index}`,
-              role: msg.role as "user" | "assistant",
-              content: msg.content,
-              timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date()
-            }))
-            
-            setMessages(loadedMessages)
-          }
-        }
-      } catch (error) {
-        console.error("[ChatClient] Error loading chat history:", error)
-      }
-    }
-    
-    if (userId) {
-      loadChatHistory()
-    }
-  }, [userId])
   
   // Auto-resize textarea
   useEffect(() => {
@@ -120,12 +144,13 @@ export default function ChatClient({ userId }: ChatClientProps) {
   }, [messages, isUserScrolling])
   
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading || !chatId) return
     
     console.log("[ChatClient] Sending message:", input.substring(0, 50) + "...")
     
-    // Reset scroll tracking when sending a new message
+    // Reset scroll tracking and error state when sending a new message
     setIsUserScrolling(false)
+    setError(null)
     
     const userMessage: Message = {
       id: `msg-${Date.now()}`,
@@ -140,15 +165,6 @@ export default function ChatClient({ userId }: ChatClientProps) {
     setIsLoading(true)
     
     try {
-      // Save user message to database
-      await createChatMessageAction({
-        chatId,
-        userId,
-        role: "user",
-        content: currentInput,
-        videoId: video?.videoId
-      })
-      
       // Create request body with video context if available
       const requestBody = {
         message: currentInput,
@@ -156,16 +172,18 @@ export default function ChatClient({ userId }: ChatClientProps) {
           role: m.role,
           content: m.content
         })),
+        chatId: chatId,
         ...(video && {
           videoContext: {
             id: video.videoId,
             title: video.title,
             transcript: video.transcript
-          }
+          },
+          videoId: video.videoId
         })
       }
       
-      console.log("[ChatClient] Calling Claude API with video context:", !!video)
+      console.log("[ChatClient] Calling Claude API with video context:", !!video, "chatId:", chatId)
       
       // Call Claude API
       const response = await fetch("/api/claude/chat", {
@@ -177,7 +195,8 @@ export default function ChatClient({ userId }: ChatClientProps) {
       })
       
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
+        const errorText = await response.text()
+        throw new Error(errorText || `API error: ${response.status}`)
       }
       
       console.log("[ChatClient] Received response, processing stream...")
@@ -187,6 +206,7 @@ export default function ChatClient({ userId }: ChatClientProps) {
       const decoder = new TextDecoder()
       let assistantMessage = ""
       let assistantMessageId = `msg-${Date.now()}-assistant`
+      let hasStartedStreaming = false
       
       if (reader) {
         while (true) {
@@ -200,9 +220,11 @@ export default function ChatClient({ userId }: ChatClientProps) {
             if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.slice(6))
-                // Handle the streaming response format from Claude API
+                
+                // Handle different response types
                 if (data.type === 'text' && data.text) {
                   assistantMessage += data.text
+                  hasStartedStreaming = true
                   
                   // Update the assistant message in real-time
                   setMessages(prev => {
@@ -224,6 +246,13 @@ export default function ChatClient({ userId }: ChatClientProps) {
                   })
                 } else if (data.type === 'done') {
                   console.log("[ChatClient] Stream completed with chatId:", data.chatId)
+                  // Update our chatId if it changed
+                  if (data.chatId && data.chatId !== chatId) {
+                    setChatId(data.chatId)
+                  }
+                } else if (data.type === 'error') {
+                  console.error("[ChatClient] Stream error:", data.message)
+                  throw new Error(data.message || "Stream error")
                 }
               } catch (e) {
                 console.error("[ChatClient] Error parsing SSE data:", e)
@@ -231,27 +260,37 @@ export default function ChatClient({ userId }: ChatClientProps) {
             }
           }
         }
+        
+        // If we didn't receive any content, show an error
+        if (!hasStartedStreaming) {
+          throw new Error("No response received from AI")
+        }
       }
       
-      console.log("[ChatClient] Stream complete, saving assistant message to database")
-      
-      // Save assistant message to database
-      await createChatMessageAction({
-        chatId,
-        userId,
-        role: "assistant",
-        content: assistantMessage,
-        videoId: video?.videoId
-      })
-      
-      console.log("[ChatClient] Chat saved successfully")
+      console.log("[ChatClient] Chat completed successfully")
       
     } catch (error) {
       console.error("[ChatClient] Error sending message:", error)
+      
+      // Remove the loading message if it was added
+      setMessages(prev => prev.filter(m => m.id !== `msg-${Date.now()}-assistant`))
+      
+      // Show error message
+      const errorMessage = error instanceof Error ? error.message : "Failed to send message"
+      setError(errorMessage)
+      
+      // Show error toast
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      })
+      
+      // Add error message to chat
       setMessages(prev => [...prev, {
         id: `msg-${Date.now()}-error`,
         role: "assistant",
-        content: "I'm sorry, I encountered an error processing your message. Please try again.",
+        content: `❌ Error: ${errorMessage}\n\nPlease try again. If the problem persists, refresh the page or contact support.`,
         timestamp: new Date()
       }])
     } finally {
@@ -269,6 +308,24 @@ export default function ChatClient({ userId }: ChatClientProps) {
   const handleExampleQuestion = (question: string) => {
     setInput(question)
     textareaRef.current?.focus()
+  }
+  
+  // Show initialization state
+  if (isInitializing) {
+    return (
+      <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <p className="text-sm text-muted-foreground">Initializing chat...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
   
   // Function to render message content with markdown support and clickable timestamps

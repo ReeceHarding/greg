@@ -35,6 +35,12 @@ export async function POST(request: NextRequest) {
   console.log("[Claude API] Received chat request")
   
   try {
+    // Check for API key first
+    if (!process.env.CLAUDE_API_KEY) {
+      console.error("[Claude API] Missing CLAUDE_API_KEY environment variable")
+      return new Response("Claude API not configured", { status: 500 })
+    }
+    
     // Authenticate user
     const authResult = await auth()
     if (!authResult.user) {
@@ -42,11 +48,15 @@ export async function POST(request: NextRequest) {
       return new Response("Unauthorized", { status: 401 })
     }
     
-    const { message, chatHistory = [], videoId } = await request.json()
+    const { message, chatHistory = [], videoId, chatId } = await request.json()
     
     console.log(`[Claude Chat API] Received message: ${message.substring(0, 100)}...`)
     console.log(`[Claude Chat API] Chat history length: ${chatHistory.length}`)
     console.log(`[Claude Chat API] Video ID: ${videoId || 'none'}`)
+    console.log(`[Claude Chat API] Chat ID: ${chatId || 'none'}`)
+    
+    // Generate a consistent chatId if not provided
+    const currentChatId = chatId || `chat_${authResult.user.uid}_${videoId || 'general'}_${new Date().toISOString().split('T')[0]}`
     
     // Get video context if available
     let videoData = null
@@ -157,9 +167,27 @@ Guidelines:
 - If discussing video content, reference specific timestamps when available
 - Format timestamps as [MM:SS] for easy reference
 - Break down complex concepts into understandable parts
-- Encourage students to apply what they learn`
+- Encourage students to apply what they learn
+- Use markdown formatting for better readability (headers, lists, bold, etc.)
+- When appropriate, use emojis to make the conversation more engaging
+- Keep responses concise but comprehensive`
     
     console.log("[Claude API] Calling Claude API with streaming")
+    
+    // Save user message immediately
+    try {
+      await createChatMessageAction({
+        chatId: currentChatId,
+        userId: authResult.user.uid,
+        role: "user",
+        content: message,
+        videoId: videoId || undefined
+      })
+      console.log("[Claude API] User message saved to database")
+    } catch (error) {
+      console.error("[Claude API] Error saving user message:", error)
+      // Continue even if saving fails
+    }
     
     // Create streaming response
     const encoder = new TextEncoder()
@@ -188,27 +216,50 @@ Guidelines:
           if (!response.ok) {
             const error = await response.text()
             console.error("[Claude API] Error from Claude:", error)
-            controller.enqueue(encoder.encode(`data: {"error": "Failed to get response from AI"}\n\n`))
+            
+            // Parse error for better user feedback
+            let errorMessage = "Failed to get response from AI"
+            try {
+              const errorData = JSON.parse(error)
+              if (errorData.error?.message) {
+                errorMessage = errorData.error.message
+              }
+            } catch (e) {
+              // Use default error message
+            }
+            
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'error',
+              message: errorMessage
+            })}\n\n`))
             controller.close()
             return
           }
           
           const reader = response.body?.getReader()
           if (!reader) {
-            controller.enqueue(encoder.encode(`data: {"error": "No response body"}\n\n`))
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'error',
+              message: "No response body"
+            })}\n\n`))
             controller.close()
             return
           }
           
           let assistantMessage = ""
           const decoder = new TextDecoder()
+          let buffer = ""
           
           while (true) {
             const { done, value } = await reader.read()
             if (done) break
             
-            const chunk = decoder.decode(value)
-            const lines = chunk.split('\n')
+            // Add to buffer
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            
+            // Process all complete lines
+            buffer = lines.pop() || "" // Keep the last incomplete line in buffer
             
             for (const line of lines) {
               if (line.startsWith('data: ')) {
@@ -230,35 +281,32 @@ Guidelines:
                       text: parsedContent
                     })}\n\n`))
                   } else if (parsed.type === 'message_stop') {
-                    // Save the complete message to database
-                    console.log("[Claude API] Saving messages to database")
+                    // Save the complete assistant message
+                    console.log("[Claude API] Stream complete, saving assistant message")
                     
-                    // Save user message
-                    if (authResult.user) {
+                    try {
                       await createChatMessageAction({
-                        chatId: `chat_${Date.now()}`,
-                        userId: authResult.user.uid,
-                        role: "user",
-                        content: message,
-                        videoId: videoId || undefined
-                      })
-                    }
-                    
-                    // Save assistant message
-                    if (authResult.user) {
-                      await createChatMessageAction({
-                        chatId: `chat_${Date.now()}`,
+                        chatId: currentChatId,
                         userId: authResult.user.uid,
                         role: "assistant",
                         content: assistantMessage,
                         videoId: videoId || undefined
                       })
+                      console.log("[Claude API] Assistant message saved to database")
+                    } catch (error) {
+                      console.error("[Claude API] Error saving assistant message:", error)
                     }
                     
-                    // Send completion signal
+                    // Send completion signal with the chatId
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                       type: 'done',
-                      chatId: `chat_${Date.now()}`
+                      chatId: currentChatId
+                    })}\n\n`))
+                  } else if (parsed.type === 'error') {
+                    console.error("[Claude API] Stream error:", parsed)
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      type: 'error',
+                      message: parsed.error?.message || 'Stream error'
                     })}\n\n`))
                   }
                 } catch (e) {
@@ -268,10 +316,19 @@ Guidelines:
             }
           }
           
+          // Process any remaining buffer
+          if (buffer.length > 0) {
+            console.log("[Claude API] Processing remaining buffer:", buffer)
+          }
+          
           controller.close()
         } catch (error) {
           console.error("[Claude API] Stream error:", error)
-          controller.enqueue(encoder.encode(`data: {"error": "Stream error"}\n\n`))
+          const errorMessage = error instanceof Error ? error.message : "Stream error"
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'error',
+            message: errorMessage
+          })}\n\n`))
           controller.close()
         }
       }
@@ -287,6 +344,7 @@ Guidelines:
     
   } catch (error) {
     console.error("[Claude API] Error:", error)
-    return new Response("Internal server error", { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Internal server error"
+    return new Response(errorMessage, { status: 500 })
   }
 } 
