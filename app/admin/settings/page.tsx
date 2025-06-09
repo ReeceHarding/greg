@@ -17,13 +17,6 @@ export default async function AdminSettingsPage() {
 
       <div className="space-y-8">
         <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold mb-1">Admin Access</h2>
-            <p className="text-sm text-muted-foreground">
-              Manage email addresses that have admin access to the platform
-            </p>
-          </div>
-          
           <Suspense
             fallback={
               <div className="space-y-4">

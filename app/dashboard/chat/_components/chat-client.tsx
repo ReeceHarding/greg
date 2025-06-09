@@ -28,6 +28,8 @@ export default function ChatClient({ userId }: ChatClientProps) {
   const [chatId, setChatId] = useState<string>(`chat_${userId}_${Date.now()}`)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
   
   console.log("[ChatClient] Rendering with userId:", userId, "videoId:", videoId)
   
@@ -94,15 +96,36 @@ export default function ChatClient({ userId }: ChatClientProps) {
     }
   }, [input])
   
-  // Scroll to bottom when messages change
+  // Track if user has scrolled up
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    const container = messagesContainerRef.current
+    if (!container) return
+    
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container
+      // Check if user is within 100px of the bottom
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 100
+      setIsUserScrolling(!isAtBottom)
+    }
+    
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [])
+  
+  // Scroll to bottom when messages change (only if user isn't scrolling)
+  useEffect(() => {
+    if (!isUserScrolling) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [messages, isUserScrolling])
   
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
     
     console.log("[ChatClient] Sending message:", input.substring(0, 50) + "...")
+    
+    // Reset scroll tracking when sending a new message
+    setIsUserScrolling(false)
     
     const userMessage: Message = {
       id: `msg-${Date.now()}`,
@@ -252,13 +275,21 @@ export default function ChatClient({ userId }: ChatClientProps) {
   const renderMessageContent = (content: string, role: "user" | "assistant") => {
     // Parse markdown with React
     const parseMarkdown = (text: string) => {
-      // Handle code blocks
+      // Handle code blocks first (to prevent other parsing inside code blocks)
       text = text.replace(/```([^`]*?)```/g, (match, code) => {
         return `<pre class="bg-gray-100 rounded-lg p-3 my-2 overflow-x-auto"><code>${code.trim()}</code></pre>`
       })
       
       // Handle inline code
       text = text.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>')
+      
+      // Handle headers (h1-h6)
+      text = text.replace(/^#{6}\s+(.+)$/gm, '<h6 class="text-sm font-semibold mt-4 mb-2">$1</h6>')
+      text = text.replace(/^#{5}\s+(.+)$/gm, '<h5 class="text-base font-semibold mt-4 mb-2">$1</h5>')
+      text = text.replace(/^#{4}\s+(.+)$/gm, '<h4 class="text-lg font-semibold mt-4 mb-2">$1</h4>')
+      text = text.replace(/^#{3}\s+(.+)$/gm, '<h3 class="text-xl font-semibold mt-6 mb-3">$1</h3>')
+      text = text.replace(/^#{2}\s+(.+)$/gm, '<h2 class="text-2xl font-bold mt-6 mb-3">$1</h2>')
+      text = text.replace(/^#{1}\s+(.+)$/gm, '<h1 class="text-3xl font-bold mt-6 mb-4">$1</h1>')
       
       // Handle bold
       text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -304,19 +335,22 @@ export default function ChatClient({ userId }: ChatClientProps) {
             const timestampText = match[1]
             const seconds = parseInt(match[2])
             
+            // Create YouTube URL with timestamp
+            const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}&t=${seconds}`
+            
             parts.push(
-              <button
+              <a
                 key={`timestamp-${idx}-${match.index}`}
-                onClick={() => {
-                  window.location.href = `/dashboard/videos/${video.videoId}?t=${seconds}`
-                }}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md text-sm font-medium transition-colors duration-200 mx-1"
+                href={videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md text-sm font-medium transition-colors duration-200 mx-1 no-underline"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 {timestampText}
-              </button>
+              </a>
             )
             
             lastIndex = match.index + match[0].length
@@ -364,7 +398,7 @@ export default function ChatClient({ userId }: ChatClientProps) {
   return (
     <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-8">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-8">
         <div className="flex flex-col gap-8 max-w-4xl mx-auto">
           {/* Show video context if available */}
           {video && messages.length === 0 && (

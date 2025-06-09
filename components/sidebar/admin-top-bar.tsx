@@ -65,12 +65,24 @@ export default function AdminTopBar() {
             {/* Dropdown Menu */}
             {showDropdown && (
               <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg py-1 z-50">
-                <a href="#" className="block px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors">
+                <button
+                  onClick={() => {
+                    router.push('/dashboard/settings')
+                    setShowDropdown(false)
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                >
                   Profile Settings
-                </a>
-                <a href="#" className="block px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors">
+                </button>
+                <button
+                  onClick={() => {
+                    router.push('/admin/settings')
+                    setShowDropdown(false)
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                >
                   Admin Settings
-                </a>
+                </button>
                 <hr className="my-1 border-border" />
                 <button
                   onClick={handleSignOut}

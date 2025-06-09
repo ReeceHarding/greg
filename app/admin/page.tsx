@@ -98,10 +98,10 @@ export default async function AdminDashboard() {
         <div className="container max-w-7xl">
           {/* Page Header */}
           <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-4">
+            <h1 className="text-3xl font-bold mb-2">
               Admin Dashboard
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl">
+            <p className="text-muted-foreground">
               Monitor student progress, manage content, and keep your cohort on track
             </p>
           </div>
