@@ -39,12 +39,6 @@
   - [ ] Use Pinecone or another vector database service (not custom built) for semantic transcript search
   - [ ] Parse Claude 4 Sonnet's natural language responses to extract timestamp ranges and format them as clickable video links
 
-- [ ] Create AI-powered learning path system that builds custom video playlists using Claude 4 Sonnet
-  - [ ] Use Claude 4 Sonnet to analyze student queries and suggest ordered sequences of YouTube video timestamps
-  - [ ] Design simple playlist UI showing YouTube video thumbnails and total watch time (NO custom player)
-  - [ ] Store each student's custom playlists and watch progress in Firestore
-  - [ ] Display playlist as a list of YouTube links with timestamps (NO continuous playback or custom transitions)
-
 ## Assignment and Progress Tracking System
 
 - [ ] Build assignment system organized around weekly entrepreneurship themes with specific deliverables
@@ -54,22 +48,19 @@
     - [ ] **Week 2: Vibe Code Fully Functional MVP** - Submit video demo of working MVP built with Bolt/Lovable/Cursor including GitHub repo link
     - [ ] **Week 3-4: Iteration on MVP** - Submit video demo showing customer feedback implementation and feature improvements
     - [ ] **Week 5-6: Vibe Marketing and Automation** - Submit video demo of n8n automations and proof of 100+ person waitlist (week 5) / 1000+ person waitlist (week 6)
-    - [ ] **Week 7-8: Turn Users Into Paying Customers** - Submit video demo of payment integration and revenue proof screenshots
+    - [ ] **Week 7-8: Turn Users Into Paying Customers** - Submit video demo of payment integration and first customer acquisition
   - [ ] Implement simple weekly form for each submission including:
     - [ ] Video demo URL field (required - typically YouTube or Loom link)
     - [ ] GitHub repository link field (optional - for code submissions)
-    - [ ] Business metrics fields (revenue, user count, waitlist size as applicable)
     - [ ] Written reflection text area (500 word limit) about weekly learnings
     - [ ] Supporting documents upload (screenshots, spreadsheets, etc.)
   - [ ] Use a third-party calendar library (e.g., FullCalendar, react-big-calendar) for schedule display
   - [ ] Track status for each submission: "Not Started", "In Progress", "Submitted", "Approved", "Needs Revision"
   - [ ] Use a charting library (e.g., Recharts, Chart.js) for progress bars and visualizations
-  - [ ] Show estimated time remaining for program completion based on student's pace
 
 - [ ] Create AI-powered insights dashboard for student progress using Claude 4 Sonnet exclusively
-  - [ ] Use Claude 4 Sonnet to generate weekly progress reports analyzing completion rate, revenue growth, and engagement
+  - [ ] Use Claude 4 Sonnet to generate weekly progress reports analyzing completion rate and engagement
   - [ ] Have Claude 4 Sonnet identify struggling areas and suggest specific Greg Isenberg videos to review
-  - [ ] Ask Claude 4 Sonnet to predict likelihood of reaching revenue goals based on current trajectory data
   - [ ] Use Claude 4 Sonnet to recommend peer students for collaboration based on complementary skills
   - [ ] Generate personalized encouragement messages with Claude 4 Sonnet when students hit milestones
 
@@ -80,49 +71,37 @@
   - [ ] Let Claude 4 Sonnet naturally answer "What assignments do I have due this week?" based on data
   - [ ] Have Claude 4 Sonnet calculate and respond to "What's my current completion percentage?"
   - [ ] Provide Claude 4 Sonnet with individual student context for personalized responses
-  - [ ] Use Claude 4 Sonnet to gracefully handle queries it cannot answer (no hard-coded responses)
 
-## Real-Time Leaderboard System
+## Simple Leaderboard System
 
-- [ ] Create competitive leaderboard that ranks students by business revenue and progress
-  - [ ] Design leaderboard UI showing student rankings based on verified revenue generated
-  - [ ] Implement ranking algorithm weighing revenue (70%), assignment completion (20%), and forum participation (10%)
-  - [ ] Display revenue milestones with badges ($1K, $10K, $100K revenue generated)
-  - [ ] Build real-time Firestore listeners to update rankings instantly when revenue is reported
-  - [ ] Create filtered views for weekly, monthly, and all-time revenue leaders
-  - [ ] Show anonymized revenue ranges for privacy while maintaining competition
+- [ ] Create leaderboard that ranks students by progress and engagement
+  - [ ] Design leaderboard UI showing student rankings based on assignment completion and participation
+  - [ ] Implement ranking algorithm based on: assignment completion (60%), forum participation (40%)
+  - [ ] Display progress milestones with badges (25%, 50%, 75%, 100% completion)
+  - [ ] Show weekly "most active" students to encourage participation
 
 ## Student Onboarding Flow
 
-- [ ] Design guided setup process for all required entrepreneurship tools
+- [ ] Design simple guided setup process for required entrepreneurship tools
   - [ ] Create onboarding checklist with clear steps: "Install Cursor AI Editor", "Create n8n automation account", "Set up Stripe account", "Configure domain and hosting"
-  - [ ] Build verification system where students submit screenshots proving each tool is configured
   - [ ] Provide direct links to tool signups with any available discount codes or free credits
   - [ ] Include estimated setup time for each tool (e.g., "Cursor setup: 10 minutes")
-  - [ ] Create tutorial videos for each setup step hosted within the platform
-
-- [ ] Implement onboarding completion tracking with curriculum access control
-  - [ ] Store onboarding progress for each student with timestamp of each completed step
-  - [ ] Block access to video content and assignments until all onboarding tasks are verified
   - [ ] Display progress bar showing percentage of onboarding completed
-  - [ ] Send daily email reminders about incomplete onboarding tasks
 
 ## Assignment Submission Portal
 
 - [ ] Create flexible submission system supporting entrepreneurship-focused assignments
-  - [ ] Build submission form accepting: live website URLs, GitHub repos, video demos, business metrics screenshots
+  - [ ] Build submission form accepting: live website URLs, GitHub repos, video demos
   - [ ] Use a third-party drag-and-drop file upload library (e.g., react-dropzone) for file uploads
-  - [ ] Use a third-party rich text editor library (e.g., Quill, TinyMCE) for business plans and reflections
+  - [ ] Use a third-party rich text editor library (e.g., Quill, TinyMCE) for reflections
   - [ ] Add special fields for n8n workflow exports and automation documentation
-  - [ ] Include revenue proof upload for assignments requiring business validation
   - [ ] Build submission preview before final submit with ability to edit
 
-- [ ] Develop AI-powered feedback for business and technical assignments using Claude 4 Sonnet ONLY
+- [ ] Develop AI-powered feedback for assignments using Claude 4 Sonnet ONLY
   - [ ] Create Cloud Function that sends assignment content to Claude 4 Sonnet API for analysis (NOT templates)
-  - [ ] Use Claude 4 Sonnet to analyze business model viability, market fit, and revenue potential
-  - [ ] Have Claude 4 Sonnet review code quality, architecture, and best practices for technical submissions
+  - [ ] Use Claude 4 Sonnet to analyze business model viability and provide constructive feedback
+  - [ ] Have Claude 4 Sonnet review code quality and best practices for technical submissions
   - [ ] Send n8n workflows to Claude 4 Sonnet for efficiency analysis and improvement suggestions
-  - [ ] Let Claude 4 Sonnet generate specific, personalized action items for improving business metrics
   - [ ] Parse Claude 4 Sonnet's responses to format feedback with clear sections: strengths, improvements needed, next steps
 
 ## Instructor Review Interface
@@ -133,55 +112,42 @@
   - [ ] Design split-screen interface showing student submission, AI feedback, and instructor comment area
   - [ ] Implement rich text editor for instructors to provide detailed feedback
   - [ ] Build approval/revision request system with clear status indicators
-  - [ ] Track which instructor reviewed each submission with timestamp
 
 ## Admin Dashboard Student Management
 
-- [ ] Develop comprehensive student management interface for administrators
-  - [ ] Build filterable student list with status indicators: "On Track", "Behind Schedule", "At Risk", "Completed"
+- [ ] Develop student management interface for administrators
+  - [ ] Build filterable student list with status indicators: "On Track", "Behind Schedule", "Completed"
   - [ ] Create detailed student profile views showing progress metrics and engagement statistics
   - [ ] Implement assignment completion history timeline for each student
-  - [ ] Design performance trend visualizations over program duration
   - [ ] Add quick action buttons for common administrative tasks
 
-## Content Management System
+## Live Sessions and Office Hours System
 
-- [ ] Create admin tools for program content administration
-  - [ ] Build assignment creation and editing interface with rich text editor
-  - [ ] Implement due date management system with bulk update capabilities
-  - [ ] Create video assignment selector linking to YouTube content library
-  - [ ] Design curriculum structure editor for organizing content modules
-  - [ ] Add preview functionality to see student view before publishing changes
+- [ ] Build live video session system for weekly calls and office hours using Zoom links only
+  - [ ] Use Zoom SDK/API to generate meeting links and share them with students (NO custom video player)
+  - [ ] Create calendar displaying Zoom meeting links for upcoming office hours and weekly expert calls
+  - [ ] Implement session registration where students RSVP and receive Zoom meeting links via email
+  - [ ] Use Zoom's cloud recording feature and share recording links with students (NO embedded video player)
+  - [ ] Send automated emails with Zoom meeting links 24 hours and 1 hour before each live session
 
-## Student Portfolio Dashboard
+## Collaborative Forum System
 
-- [ ] Create portfolio section within student dashboard to showcase completed projects
-  - [ ] Build project submission interface where students add project name, description, URL, and screenshots
-  - [ ] Implement project categorization by type (SaaS, e-commerce, automation tool, etc.)
-  - [ ] Display revenue generated by each project with verification badges
-  - [ ] Create rich media support for project demos including video walkthroughs
-  - [ ] Add social proof metrics like customer testimonials or user counts
-  - [ ] Generate shareable project links for students to use in their marketing
+- [ ] Integrate a third-party forum solution or use a forum library for student discussions
+  - [ ] Consider using Discourse API, Forem, or a React forum component library
+  - [ ] Configure categories for different topics (business ideas, technical help, marketing)
+  - [ ] Enable rich text posting using the chosen forum's built-in editor
+  - [ ] Configure the forum's built-in threading and reply system
+  - [ ] Use the forum's native voting/reaction features
+  - [ ] Configure user profiles to sync with Firebase Auth
 
 ## Certificate Generation System
 
 - [ ] Build automated certificate system for program completion
   - [ ] Create certificate template with professional design including student name, completion date, and unique ID
-  - [ ] Define completion requirements: minimum revenue generated ($X), all core assignments completed, attendance at Y% of live sessions
+  - [ ] Define completion requirements: all core assignments completed, attendance at minimum number of live sessions
   - [ ] Use a PDF generation library (e.g., jsPDF, Puppeteer) to create certificates automatically
   - [ ] Store certificates in Firebase Storage with unique verification URLs
   - [ ] Create public verification page where anyone can verify certificate authenticity
-  - [ ] Send congratulatory email with certificate attached when earned
-
-## Admin Analytics Dashboard
-
-- [ ] Build analytics dashboard for tracking program and revenue metrics
-  - [ ] Display total revenue generated across all students with monthly/yearly views
-  - [ ] Show platform revenue share calculations and projections
-  - [ ] Create student engagement metrics: login frequency, video watch time, assignment completion rates
-  - [ ] Build cohort performance comparisons to identify successful program iterations
-  - [ ] Generate automated weekly reports summarizing key metrics for admin review
-  - [ ] Export functionality for revenue data in CSV format for accounting
 
 ## Mobile Responsive Implementation
 
@@ -190,14 +156,3 @@
   - [ ] Create mobile-optimized navigation with hamburger menu and touch gestures
   - [ ] Ensure assignment submission works on mobile with camera integration for screenshots
   - [ ] Ensure YouTube iframe embeds work on mobile (NO custom video player optimizations)
-  - [ ] Test all critical flows on iOS and Android devices
-
-## Performance and Scalability
-
-- [ ] Optimize platform to handle concurrent usage by all enrolled students
-  - [ ] Implement Firestore query optimization with proper indexes for all collections
-  - [ ] Set up Firebase Storage CDN for fast video thumbnail and asset delivery
-  - [ ] Create pagination for leaderboards, forum posts, and student lists
-  - [ ] Implement lazy loading for video content and images
-  - [ ] Set up monitoring with Firebase Performance Monitoring
-  - [ ] Configure auto-scaling for Cloud Functions handling AI requests
