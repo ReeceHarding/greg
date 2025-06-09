@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 const adminNavItems = [
@@ -65,6 +65,15 @@ const adminNavItems = [
 export default function AdminSidebar() {
   console.log("[AdminSidebar] Component rendered")
   const pathname = usePathname()
+  const router = useRouter()
+  
+  const handleSwitchToStudentView = () => {
+    console.log("[AdminSidebar] Switching to student view")
+    // Set the cookie to student view
+    document.cookie = "viewMode=student; path=/; max-age=2592000" // 30 days
+    // Navigate to dashboard
+    router.push("/dashboard")
+  }
 
   return (
     <div className="w-64 bg-card border-r border-border flex flex-col">
@@ -98,15 +107,15 @@ export default function AdminSidebar() {
 
       {/* Bottom section */}
       <div className="p-4 border-t border-border">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+        <button
+          onClick={handleSwitchToStudentView}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
           </svg>
           <span>Back to Student View</span>
-        </Link>
+        </button>
       </div>
     </div>
   )

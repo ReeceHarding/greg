@@ -76,15 +76,15 @@ async function DashboardContent() {
 
     // Create profile with available data
     // Note: DecodedIdToken from session might have limited data
+    const role = authResult.role || "student"
     const email = user?.email || ""
-    const displayName =
-      user?.name || user?.displayName || email.split("@")[0] || "User"
+    const displayName = email.split("@")[0] || "User"
 
     profileResult = await createProfileAction({
       userId: userId,
       email: email,
       displayName: displayName,
-      photoURL: user?.picture || user?.photoURL || "",
+      photoURL: "",
       membership: "free"
     })
 

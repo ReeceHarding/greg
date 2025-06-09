@@ -20,9 +20,14 @@ export default async function AdminContentPage() {
   const videos = videosResult.isSuccess ? videosResult.data : []
   console.log(`[Admin Content Page] Found ${videos.length} videos`)
   
+  // Debug: Check for transcripts
+  const videosWithTranscripts = videos.filter(v => v.transcript && v.transcript.length > 0)
+  console.log(`[Admin Content Page] Videos with transcripts: ${videosWithTranscripts.length}`)
+  
   // Serialize videos for client component
   const serializedVideos = videos.map(video => ({
     ...video,
+    hasTranscript: !!video.transcript && video.transcript.length > 0,
     publishedAt: video.publishedAt instanceof Date ? video.publishedAt.toISOString() : 
                  (video.publishedAt as any)?.toDate ? (video.publishedAt as any).toDate().toISOString() : 
                  new Date().toISOString(),
