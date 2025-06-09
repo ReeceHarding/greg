@@ -6,73 +6,52 @@ This client component provides a user button for the sidebar using Firebase auth
 
 "use client"
 
-import { ChevronsUpDown, LogOut, User } from "lucide-react"
+import { ChevronsUpDown, LogOut, Settings, User } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import {
-  onAuthStateChanged,
-  User as FirebaseUser,
-  signOut
-} from "firebase/auth"
-import { auth } from "@/lib/firebase-client"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar
+  useSidebar,
 } from "@/components/ui/sidebar"
 
 export function NavUser() {
+  console.log("[NavUser] Component rendered")
   const { isMobile } = useSidebar()
   const router = useRouter()
-  const [user, setUser] = useState<FirebaseUser | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  console.log("[NavUser] Component rendered")
-
-  useEffect(() => {
-    console.log("[NavUser] Setting up auth state listener")
-    const unsubscribe = onAuthStateChanged(auth, firebaseUser => {
-      console.log(
-        "[NavUser] Auth state changed, user:",
-        firebaseUser?.uid || "null"
-      )
-      setUser(firebaseUser)
-      setLoading(false)
-    })
-
-    return () => unsubscribe()
-  }, [])
 
   const handleSignOut = async () => {
-    console.log("[NavUser] Signing out user")
+    console.log("[NavUser] Signing out")
     try {
-      await signOut(auth)
-      console.log("[NavUser] Sign out successful")
-
-      // Clear session cookie
       await fetch("/api/auth/session", {
-        method: "DELETE"
+        method: "DELETE",
       })
-
-      router.push("/login")
+      router.push("/")
     } catch (error) {
-      console.error("[NavUser] Sign out error:", error)
+      console.error("[NavUser] Error signing out:", error)
     }
   }
 
-  if (loading || !user) {
-    return null
+  // Placeholder user data - will be replaced with actual user data in Phase 2
+  const user = {
+    name: "Student Name",
+    email: "student@example.com",
+    avatar: "",
   }
 
   return (
@@ -84,58 +63,56 @@ export function NavUser() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="size-8 rounded-lg">
-                <AvatarImage
-                  src={user.photoURL || undefined}
-                  alt={user.displayName || "User"}
-                />
-                <AvatarFallback className="rounded-lg">
-                  {user.email?.substring(0, 2).toUpperCase() || "U"}
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                  {user.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">
-                  {user.displayName || user.email?.split("@")[0] || "User"}
-                </span>
+                <span className="truncate font-semibold">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-[200px] rounded-lg"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="size-8 rounded-lg">
-                  <AvatarImage
-                    src={user.photoURL || undefined}
-                    alt={user.displayName || "User"}
-                  />
-                  <AvatarFallback className="rounded-lg">
-                    {user.email?.substring(0, 2).toUpperCase() || "U"}
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                    {user.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">
-                    {user.displayName || user.email?.split("@")[0] || "User"}
-                  </span>
+                  <span className="truncate font-semibold">{user.name}</span>
                   <span className="truncate text-xs">{user.email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 size-4" />
-              Account
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/profile" className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/settings" className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>
-              <LogOut className="mr-2 size-4" />
-              Log out
+            <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

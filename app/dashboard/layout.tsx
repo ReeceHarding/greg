@@ -4,17 +4,11 @@ This is the layout for the dashboard pages. It includes auth protection.
 </ai_context>
 */
 
+"use server"
+
 import { redirect } from "next/navigation"
+import { auth } from "@/lib/firebase-auth"
 import { AppSidebar } from "@/components/sidebar/app-sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
 import {
   SidebarInset,
   SidebarProvider,
@@ -26,29 +20,27 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
+  console.log("[DashboardLayout] Checking authentication")
+  const user = await auth()
+  
+  if (!user) {
+    console.log("[DashboardLayout] No authenticated user, redirecting to login")
+    redirect("/login")
+  }
+
+  console.log("[DashboardLayout] Rendering dashboard layout for user:", user.userId)
+
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">Dashboard</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Overview</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
+        <header className="flex h-16 shrink-0 items-center gap-2 px-4 border-b border-border">
+          <SidebarTrigger className="-ml-1" />
         </header>
-
-        {children}
+        
+        <main className="flex-1">
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   )
