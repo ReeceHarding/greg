@@ -3,13 +3,17 @@ import { importChannelVideosAction } from "@/actions/videos/import-channel-video
 
 export async function POST(request: NextRequest) {
   console.log("[YouTube Import API] Import request received")
+  console.log("[YouTube Import API] Environment check:")
+  console.log("[YouTube Import API] - YOUTUBE_API_KEY exists:", !!process.env.YOUTUBE_API_KEY)
   
   try {
     const body = await request.json()
     console.log("[YouTube Import API] Request body:", body)
     
     // Run the import action
+    console.log("[YouTube Import API] Calling importChannelVideosAction...")
     const result = await importChannelVideosAction()
+    console.log("[YouTube Import API] Action result:", result)
     
     if (result.isSuccess) {
       console.log("[YouTube Import API] Import successful:", result.data)
@@ -26,10 +30,11 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
   } catch (error) {
-    console.error("[YouTube Import API] Error:", error)
+    console.error("[YouTube Import API] Error details:", error)
+    console.error("[YouTube Import API] Error stack:", error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json({
       success: false,
-      message: "Import failed"
+      message: error instanceof Error ? error.message : "Import failed"
     }, { status: 500 })
   }
 } 

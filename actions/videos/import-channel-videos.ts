@@ -197,13 +197,18 @@ async function fetchVideoDetails(videoIds: string[]): Promise<Map<string, any>> 
 
 // Parse ISO 8601 duration to seconds
 function parseDuration(duration: string): number {
-  const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
+  if (!duration) return 0
   
-  if (!match) return 0
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
   
-  const hours = parseInt(match[1] || '0') || 0
-  const minutes = parseInt(match[2] || '0') || 0
-  const seconds = parseInt(match[3] || '0') || 0
+  if (!match) {
+    console.warn(`[YouTube Import] Could not parse duration: ${duration}`)
+    return 0
+  }
+  
+  const hours = parseInt(match[1] || '0', 10)
+  const minutes = parseInt(match[2] || '0', 10)
+  const seconds = parseInt(match[3] || '0', 10)
   
   return hours * 3600 + minutes * 60 + seconds
 }
@@ -260,6 +265,8 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
         // Check if video already exists
         const existingDoc = await db.collection(collections.videos).doc(videoId).get()
         
+        const publishedDate = new Date(item.snippet.publishedAt)
+        
         const videoData: Omit<FirebaseVideo, 'transcriptChunks' | 'transcript'> = {
           videoId: videoId,
           title: item.snippet.title,
@@ -268,7 +275,7 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
                        item.snippet.thumbnails?.medium?.url || 
                        item.snippet.thumbnails?.default?.url || '',
           duration: details.duration,
-          publishedAt: FieldValue.serverTimestamp() as any,
+          publishedAt: publishedDate as any,
           channelId: item.snippet.channelId,
           channelTitle: item.snippet.channelTitle,
           tags: item.snippet.tags || [],
@@ -279,20 +286,40 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
         
         if (existingDoc.exists) {
           // Update existing video
-          await db.collection(collections.videos).doc(videoId).update({
-            ...videoData,
+          const updateData = {
+            title: videoData.title,
+            description: videoData.description,
+            thumbnailUrl: videoData.thumbnailUrl,
+            duration: videoData.duration,
+            publishedAt: publishedDate,
+            channelId: videoData.channelId,
+            channelTitle: videoData.channelTitle,
+            tags: videoData.tags,
+            viewCount: videoData.viewCount,
             lastUpdatedAt: FieldValue.serverTimestamp(),
-          })
+          }
+          await db.collection(collections.videos).doc(videoId).update(updateData)
           updated++
           console.log(`[YouTube Import] Updated video: ${item.snippet.title}`)
         } else {
           // Create new video
-          await db.collection(collections.videos).doc(videoId).set({
-            ...videoData,
+          const createData = {
+            videoId: videoData.videoId,
+            title: videoData.title,
+            description: videoData.description,
+            thumbnailUrl: videoData.thumbnailUrl,
+            duration: videoData.duration,
+            publishedAt: publishedDate,
+            channelId: videoData.channelId,
+            channelTitle: videoData.channelTitle,
+            tags: videoData.tags,
+            viewCount: videoData.viewCount,
             transcript: '', // Will be populated later
             transcriptChunks: [], // Will be populated later
             importedAt: FieldValue.serverTimestamp(),
-          })
+            lastUpdatedAt: FieldValue.serverTimestamp(),
+          }
+          await db.collection(collections.videos).doc(videoId).set(createData)
           imported++
           console.log(`[YouTube Import] Imported video: ${item.snippet.title}`)
         }
