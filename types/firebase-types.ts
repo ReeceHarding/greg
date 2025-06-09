@@ -262,3 +262,30 @@ export type FirestoreTimestamp = {
   nanoseconds: number
   toDate: () => Date
 }
+
+// Serialized versions for client components (converts Timestamps to Date/string)
+export type SerializedFirebaseVideo = Omit<FirebaseVideo, 'publishedAt' | 'importedAt' | 'lastUpdatedAt'> & {
+  publishedAt: Date | string
+  importedAt: Date | string
+  lastUpdatedAt: Date | string
+}
+
+export type SerializedFirebaseLiveSession = Omit<FirebaseLiveSession, 'scheduledAt' | 'createdAt' | 'updatedAt'> & {
+  scheduledAt: Date | string
+  createdAt: Date | string
+  updatedAt: Date | string
+}
+
+export type SerializedFirebaseAssignment = Omit<FirebaseAssignment, 'dueDate' | 'createdAt' | 'updatedAt'> & {
+  dueDate: Date | string
+  createdAt: Date | string
+  updatedAt: Date | string
+}
+
+export type SerializedFirebaseSubmission = Omit<FirebaseSubmission, 'submittedAt' | 'lastUpdatedAt' | 'supportingFiles' | 'aiFeedback' | 'instructorFeedback'> & {
+  submittedAt?: Date | string | null
+  lastUpdatedAt: Date | string
+  supportingFiles: Array<Omit<SupportingFile, 'uploadedAt'> & { uploadedAt: Date | string }>
+  aiFeedback?: Omit<AIFeedback, 'generatedAt'> & { generatedAt: Date | string } | null
+  instructorFeedback?: Omit<InstructorFeedback, 'reviewedAt'> & { reviewedAt: Date | string } | null
+}

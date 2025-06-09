@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { FirebaseLiveSession } from "@/types/firebase-types"
+import { SerializedFirebaseLiveSession } from "@/types/firebase-types"
 import { registerForSessionAction, unregisterFromSessionAction } from "@/actions/db/sessions-actions"
 import { auth } from "@/lib/firebase-client"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import { format } from "date-fns"
 import { useAuthState } from "react-firebase-hooks/auth"
 
 interface SessionsClientProps {
-  sessions: FirebaseLiveSession[]
+  sessions: SerializedFirebaseLiveSession[]
 }
 
 // Google Calendar embed configuration
@@ -68,7 +68,7 @@ export default function SessionsClient({ sessions }: SessionsClientProps) {
   }
   
   // Get Zoom link (only show for registered users)
-  const getZoomLink = (session: FirebaseLiveSession) => {
+  const getZoomLink = (session: SerializedFirebaseLiveSession) => {
     if (!user || !session.registeredStudents.includes(user.uid)) {
       return null
     }

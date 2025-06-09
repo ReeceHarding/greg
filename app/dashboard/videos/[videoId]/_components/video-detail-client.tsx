@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { FirebaseVideo } from "@/types/firebase-types"
+import { SerializedFirebaseVideo } from "@/types/firebase-types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +12,7 @@ import { MessageSquare, Clock, Eye, Calendar, Hash } from "lucide-react"
 import { format } from "date-fns"
 
 interface VideoDetailClientProps {
-  video: FirebaseVideo
+  video: SerializedFirebaseVideo
 }
 
 export default function VideoDetailClient({ video }: VideoDetailClientProps) {
@@ -41,9 +41,7 @@ export default function VideoDetailClient({ video }: VideoDetailClientProps) {
   }
   
   // Parse published date
-  const publishedDate = video.publishedAt ? 
-    (video.publishedAt as any).toDate?.() || new Date(video.publishedAt as any) : 
-    new Date()
+  const publishedDate = video.publishedAt ? new Date(video.publishedAt) : new Date()
   
   return (
     <div className="space-y-6">

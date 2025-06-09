@@ -1,14 +1,24 @@
 "use server"
 
 import { db, collections } from "@/db/db"
-import { FirebaseLiveSession } from "@/types/firebase-types"
+import { FirebaseLiveSession, SerializedFirebaseLiveSession } from "@/types/firebase-types"
 import { ActionState } from "@/types"
 import { FieldValue } from 'firebase-admin/firestore'
+
+// Helper function to convert Firestore Timestamps to Dates
+function serializeSession(session: any): SerializedFirebaseLiveSession {
+  return {
+    ...session,
+    scheduledAt: session.scheduledAt?.toDate ? session.scheduledAt.toDate() : session.scheduledAt,
+    createdAt: session.createdAt?.toDate ? session.createdAt.toDate() : session.createdAt,
+    updatedAt: session.updatedAt?.toDate ? session.updatedAt.toDate() : session.updatedAt
+  }
+}
 
 // Create a new live session
 export async function createLiveSessionAction(
   data: Omit<FirebaseLiveSession, 'sessionId' | 'createdAt' | 'updatedAt' | 'registeredStudents' | 'attendedStudents'>
-): Promise<ActionState<FirebaseLiveSession>> {
+): Promise<ActionState<SerializedFirebaseLiveSession>> {
   try {
     console.log("[Sessions Action] Creating live session:", data.title)
     
@@ -27,10 +37,11 @@ export async function createLiveSessionAction(
     
     const docRef = await db.collection(collections.liveSessions).add(sessionData)
     const sessionDoc = await docRef.get()
-    const session = { 
+    const rawSession = { 
       sessionId: docRef.id, 
       ...sessionDoc.data() 
-    } as FirebaseLiveSession
+    }
+    const session = serializeSession(rawSession)
     
     console.log("[Sessions Action] Session created with ID:", docRef.id)
     
@@ -46,7 +57,7 @@ export async function createLiveSessionAction(
 }
 
 // Get all live sessions
-export async function getAllLiveSessionsAction(): Promise<ActionState<FirebaseLiveSession[]>> {
+export async function getAllLiveSessionsAction(): Promise<ActionState<SerializedFirebaseLiveSession[]>> {
   try {
     console.log("[Sessions Action] Getting all live sessions")
     
@@ -60,10 +71,12 @@ export async function getAllLiveSessionsAction(): Promise<ActionState<FirebaseLi
       .orderBy('scheduledAt', 'asc')
       .get()
     
-    const sessions = snapshot.docs.map(doc => ({ 
-      sessionId: doc.id, 
-      ...doc.data() 
-    } as FirebaseLiveSession))
+    const sessions = snapshot.docs.map(doc => 
+      serializeSession({ 
+        sessionId: doc.id, 
+        ...doc.data() 
+      })
+    )
     
     console.log(`[Sessions Action] Retrieved ${sessions.length} sessions`)
     
@@ -79,7 +92,7 @@ export async function getAllLiveSessionsAction(): Promise<ActionState<FirebaseLi
 }
 
 // Get upcoming sessions
-export async function getUpcomingSessionsAction(): Promise<ActionState<FirebaseLiveSession[]>> {
+export async function getUpcomingSessionsAction(): Promise<ActionState<SerializedFirebaseLiveSession[]>> {
   try {
     console.log("[Sessions Action] Getting upcoming sessions")
     
@@ -96,10 +109,12 @@ export async function getUpcomingSessionsAction(): Promise<ActionState<FirebaseL
       .limit(10)
       .get()
     
-    const sessions = snapshot.docs.map(doc => ({ 
-      sessionId: doc.id, 
-      ...doc.data() 
-    } as FirebaseLiveSession))
+    const sessions = snapshot.docs.map(doc => 
+      serializeSession({ 
+        sessionId: doc.id, 
+        ...doc.data() 
+      })
+    )
     
     console.log(`[Sessions Action] Retrieved ${sessions.length} upcoming sessions`)
     
