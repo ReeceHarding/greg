@@ -28,13 +28,7 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
-  // Redirect admin users to admin panel
-  if (authResult.role === "admin") {
-    console.log("[DashboardLayout] Admin user detected, redirecting to admin panel")
-    redirect("/admin")
-  }
-
-  console.log("[DashboardLayout] Rendering dashboard layout for student:", authResult.userId)
+  console.log("[DashboardLayout] Rendering dashboard layout for user:", authResult.userId)
 
   return (
     <SidebarProvider>

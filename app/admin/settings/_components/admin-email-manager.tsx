@@ -216,7 +216,13 @@ export default function AdminEmailManager({
                     <TableCell>{admin.addedBy}</TableCell>
                     <TableCell>
                       {admin.addedAt 
-                        ? new Date(admin.addedAt.seconds * 1000).toLocaleDateString()
+                        ? typeof admin.addedAt === 'string'
+                          ? new Date(admin.addedAt).toLocaleDateString()
+                          : admin.addedAt.seconds 
+                            ? new Date(admin.addedAt.seconds * 1000).toLocaleDateString()
+                            : admin.addedAt.toDate 
+                              ? admin.addedAt.toDate().toLocaleDateString()
+                              : "Unknown"
                         : "Unknown"
                       }
                     </TableCell>

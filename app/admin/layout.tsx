@@ -19,7 +19,7 @@ export default async function AdminLayout({
   }
 
   // Check if user is admin
-  if (authResult.role !== "admin") {
+  if (!authResult.user.customClaims || authResult.user.customClaims.role !== "admin") {
     console.log("[AdminLayout] User is not an admin, redirecting to dashboard")
     redirect("/dashboard")
   }
