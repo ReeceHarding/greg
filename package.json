@@ -21,7 +21,11 @@
     "firestore:deploy-rules": "node scripts/deploy-firestore-rules.js",
     "test:firebase": "tsx scripts/test-firebase.ts",
     "add-admin": "tsx scripts/add-first-admin.ts",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "seed:assignments": "tsx scripts/seed-assignments.ts",
+    "import:videos": "tsx scripts/import-youtube-channel.ts",
+    "extract:transcripts": "dotenv -e .env.local -- tsx scripts/extract-all-transcripts.ts",
+    "check:videos": "dotenv -e .env.local -- tsx scripts/setup-daily-video-check.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -88,6 +92,7 @@
     "@types/react": "19.1.6",
     "@types/react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0",
     "dotenv": "^16.5.0",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.7",
     "eslint-config-prettier": "^9.1.0",
