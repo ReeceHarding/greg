@@ -6,9 +6,12 @@ This client component provides a user button for the sidebar using Firebase auth
 
 "use client"
 
-import { ChevronsUpDown, LogOut, Settings, User } from "lucide-react"
+import { ChevronsUpDown, LogOut, Settings, User, Shield } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { auth } from "@/lib/firebase-client"
+import { onAuthStateChanged } from "firebase/auth"
 
 import {
   Avatar,
@@ -34,6 +37,44 @@ export function NavUser() {
   console.log("[NavUser] Component rendered")
   const { isMobile } = useSidebar()
   const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [viewMode, setViewMode] = useState<"student" | "admin">("student")
+
+  // Listen to auth state changes
+  useEffect(() => {
+    console.log("[NavUser] Setting up auth state listener")
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        console.log("[NavUser] User authenticated:", firebaseUser.uid)
+        
+        // Get user's custom claims to check if admin
+        const idTokenResult = await firebaseUser.getIdTokenResult()
+        const userIsAdmin = idTokenResult.claims.role === "admin"
+        console.log("[NavUser] User role:", idTokenResult.claims.role)
+        console.log("[NavUser] Is admin:", userIsAdmin)
+        
+        setUser({
+          name: firebaseUser.displayName || "Student",
+          email: firebaseUser.email || "",
+          avatar: firebaseUser.photoURL || "",
+        })
+        setIsAdmin(userIsAdmin)
+        
+        // Load view mode preference
+        const savedViewMode = localStorage.getItem("viewMode")
+        if (savedViewMode === "admin" && userIsAdmin) {
+          setViewMode("admin")
+        }
+      } else {
+        console.log("[NavUser] No user authenticated")
+        setUser(null)
+        setIsAdmin(false)
+      }
+    })
+
+    return () => unsubscribe()
+  }, [])
 
   const handleSignOut = async () => {
     console.log("[NavUser] Signing out")
@@ -47,11 +88,22 @@ export function NavUser() {
     }
   }
 
-  // Placeholder user data - will be replaced with actual user data in Phase 2
-  const user = {
-    name: "Student Name",
-    email: "student@example.com",
-    avatar: "",
+  const handleViewModeSwitch = () => {
+    console.log("[NavUser] Quick switching view mode")
+    const newMode = viewMode === "student" ? "admin" : "student"
+    setViewMode(newMode)
+    localStorage.setItem("viewMode", newMode)
+    
+    // Redirect based on new mode
+    if (newMode === "admin") {
+      router.push("/admin")
+    } else {
+      router.push("/dashboard")
+    }
+  }
+
+  if (!user) {
+    return null
   }
 
   return (
@@ -97,6 +149,18 @@ export function NavUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            
+            {/* Quick view mode switch for admins */}
+            {isAdmin && (
+              <>
+                <DropdownMenuItem onClick={handleViewModeSwitch} className="cursor-pointer">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Switch to {viewMode === "student" ? "Admin" : "Student"} View
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            
             <DropdownMenuItem asChild>
               <Link href="/dashboard/profile" className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />

@@ -23,7 +23,8 @@ const projects: Project[] = [
     title: "Internal Communication Platform",
     description:
       "Custom built alternative to Slack. Better features, owned forever, no monthly fees.",
-    image: "/images/postel-dashboard.svg",
+    image:
+      "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&h=400&fit=crop",
     duration: "14 days",
     cost: "One time cost"
   },
@@ -40,7 +41,8 @@ const projects: Project[] = [
     title: "FinTech Startup MVP",
     description:
       "Full featured MVP launched in 2 weeks. Production ready from day one.",
-    image: "/images/postel-screenshot.svg",
+    image:
+      "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600&h=400&fit=crop",
     duration: "14 days",
     cost: "Live in 2 weeks",
     liveIn: "2 weeks"

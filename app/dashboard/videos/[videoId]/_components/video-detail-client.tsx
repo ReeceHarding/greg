@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MessageSquare, Clock, Eye, Calendar, Hash, ExternalLink } from "lucide-react"
 import { format } from "date-fns"
 import VideoTranscript from "./video-transcript"
+import VideoDescriptionFormatter from "./video-description-formatter"
 
 interface VideoDetailClientProps {
   video: SerializedFirebaseVideo
@@ -179,9 +180,10 @@ export default function VideoDetailClient({ video }: VideoDetailClientProps) {
             </TabsList>
             
             <TabsContent value="description" className="mt-4">
-              <div className="whitespace-pre-wrap text-sm">
-                {video.description || "No description available."}
-              </div>
+              <VideoDescriptionFormatter 
+                description={video.description || "No description available."}
+                onTimestampClick={handleSeekToTime}
+              />
             </TabsContent>
             
             <TabsContent value="transcript" className="mt-4">
