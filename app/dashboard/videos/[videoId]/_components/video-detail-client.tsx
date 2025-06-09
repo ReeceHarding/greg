@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { SerializedFirebaseVideo } from "@/types/firebase-types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MessageSquare, Clock, Eye, Calendar, Hash, ExternalLink } from "lucide-react"
 import { format } from "date-fns"
+import VideoTranscript from "./video-transcript"
 
 interface VideoDetailClientProps {
   video: SerializedFirebaseVideo
@@ -17,7 +17,8 @@ interface VideoDetailClientProps {
 
 export default function VideoDetailClient({ video }: VideoDetailClientProps) {
   const router = useRouter()
-  const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(false)
+  const playerRef = useRef<HTMLIFrameElement>(null)
+  const [playerReady, setPlayerReady] = useState(false)
   
   console.log(`[VideoDetailClient] Rendering video: ${video.title}`)
   
@@ -40,9 +41,58 @@ export default function VideoDetailClient({ video }: VideoDetailClientProps) {
     router.push(`/dashboard/chat?videoId=${video.videoId}`)
   }
   
+  // Handle seeking to specific time in video
+  const handleSeekToTime = (timeInSeconds: number) => {
+    console.log(`[VideoDetailClient] Seeking to ${timeInSeconds} seconds`)
+    
+    if (playerRef.current) {
+      // Use YouTube iframe API to seek
+      playerRef.current.contentWindow?.postMessage(
+        JSON.stringify({
+          event: 'command',
+          func: 'seekTo',
+          args: [timeInSeconds, true]
+        }),
+        '*'
+      )
+    }
+  }
+  
   // Parse published date - handle potential invalid dates
   const publishedDate = video.publishedAt ? new Date(video.publishedAt) : new Date()
   const isValidDate = publishedDate instanceof Date && !isNaN(publishedDate.getTime())
+  
+  // Check for timestamp in URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const timestamp = params.get('t')
+    
+    if (timestamp && playerReady) {
+      const seconds = parseInt(timestamp)
+      if (!isNaN(seconds)) {
+        handleSeekToTime(seconds)
+      }
+    }
+  }, [playerReady])
+  
+  // Listen for YouTube player ready
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== 'https://www.youtube.com') return
+      
+      try {
+        const data = JSON.parse(event.data)
+        if (data.event === 'onReady') {
+          setPlayerReady(true)
+        }
+      } catch (e) {
+        // Not a JSON message, ignore
+      }
+    }
+    
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
   
   return (
     <div className="space-y-6">
@@ -50,7 +100,8 @@ export default function VideoDetailClient({ video }: VideoDetailClientProps) {
       <Card className="overflow-hidden">
         <div className="aspect-video w-full">
           <iframe
-            src={`https://www.youtube.com/embed/${video.videoId}`}
+            ref={playerRef}
+            src={`https://www.youtube.com/embed/${video.videoId}?enablejsapi=1`}
             title={video.title}
             className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -128,44 +179,18 @@ export default function VideoDetailClient({ video }: VideoDetailClientProps) {
             </TabsList>
             
             <TabsContent value="description" className="mt-4">
-              <ScrollArea className="h-[400px] w-full pr-4">
-                <div className="whitespace-pre-wrap text-sm">
-                  {video.description || "No description available."}
-                </div>
-              </ScrollArea>
+              <div className="whitespace-pre-wrap text-sm">
+                {video.description || "No description available."}
+              </div>
             </TabsContent>
             
             <TabsContent value="transcript" className="mt-4">
               {video.transcript ? (
-                <div>
-                  <ScrollArea className={`w-full pr-4 ${isTranscriptExpanded ? 'h-[600px]' : 'h-[400px]'}`}>
-                    <div className="space-y-4">
-                      {video.transcriptChunks && video.transcriptChunks.length > 0 ? (
-                        video.transcriptChunks.map((chunk, index) => (
-                          <div key={chunk.chunkId} className="pb-4 border-b last:border-0">
-                            <div className="text-xs text-muted-foreground mb-1">
-                              {formatDuration(Math.floor(chunk.startTime))} - {formatDuration(Math.floor(chunk.endTime))}
-                            </div>
-                            <p className="text-sm whitespace-pre-wrap">{chunk.text}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="whitespace-pre-wrap text-sm">
-                          {video.transcript}
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                  <div className="mt-4 text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsTranscriptExpanded(!isTranscriptExpanded)}
-                    >
-                      {isTranscriptExpanded ? "Show Less" : "Show More"}
-                    </Button>
-                  </div>
-                </div>
+                <VideoTranscript 
+                  transcript={video.transcript}
+                  transcriptChunks={video.transcriptChunks || []}
+                  onSeekToTime={handleSeekToTime}
+                />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <p className="mb-4">Transcript not available for this video.</p>

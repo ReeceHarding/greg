@@ -84,8 +84,8 @@ async function extractTranscriptUsingAPI(videoId: string): Promise<{ text: strin
     
     for (const item of transcriptItems) {
       const text = item.text.trim()
-      const startTime = item.start / 1000 // Convert to seconds
-      const duration = item.duration / 1000 // Convert to seconds
+      const startTime = item.start // Already in seconds, no conversion needed
+      const duration = item.duration // Already in seconds, no conversion needed
       const endTime = startTime + duration
       
       // If adding this text would exceed chunk size, save current chunk
@@ -113,7 +113,7 @@ async function extractTranscriptUsingAPI(videoId: string): Promise<{ text: strin
     // Don't forget the last chunk
     if (currentChunk.trim().length > 0) {
       const lastItem = transcriptItems[transcriptItems.length - 1]
-      const endTime = (lastItem.start + lastItem.duration) / 1000
+      const endTime = lastItem.start + lastItem.duration // Already in seconds
       
       chunks.push({
         chunkId: `${videoId}_chunk_${chunkIndex}`,
