@@ -25,7 +25,8 @@
     "seed:assignments": "tsx scripts/seed-assignments.ts",
     "import:videos": "tsx scripts/import-youtube-channel.ts",
     "extract:transcripts": "dotenv -e .env.local -- tsx scripts/extract-all-transcripts.ts",
-    "check:videos": "dotenv -e .env.local -- tsx scripts/setup-daily-video-check.ts"
+    "check:videos": "dotenv -e .env.local -- tsx scripts/setup-daily-video-check.ts",
+    "transcript:progress": "dotenv -e .env.local -- tsx scripts/check-transcript-progress.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
