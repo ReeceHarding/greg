@@ -1,5 +1,10 @@
 # AI Summer Camp Platform Implementation Checklist
 
+## CRITICAL REQUIREMENTS:
+- **ALL AI features MUST use Claude 4 Sonnet API exclusively - NO template systems, NO keyword matching, NO other LLMs**
+- **NO custom video player development - use ONLY YouTube iframe embeds and Zoom meeting links**
+- **For live sessions: share Zoom links ONLY - no embedded video conferencing**
+
 ## Core Platform Architecture
 
 - [ ] Create a single page application using React that integrates Firebase services and third-party APIs to serve as the foundation for the AI Summer Camp platform
@@ -28,25 +33,26 @@
 
 ## Video Learning System with AI Timestamp Suggestions
 
-- [ ] Build video learning system that imports all videos from Greg Isenberg's YouTube channel and provides AI-powered timestamp navigation
+- [ ] Build video learning system that imports all videos from Greg Isenberg's YouTube channel (NO custom video player)
   - [ ] Set up YouTube Data API v3 with API key and configure quota management
   - [ ] Create Cloud Function that fetches all videos from Greg Isenberg's channel ID and stores metadata in Firestore
   - [ ] Implement automatic transcript extraction using YouTube's caption API and store in Firestore
-  - [ ] Use YouTube's iframe API for embedding videos with timestamp control (no custom player needed)
-  - [ ] Create clickable timestamp UI elements formatted as "Watch from 14:23 to 18:45" that control video playback
+  - [ ] Use ONLY YouTube's standard iframe embed for videos (absolutely NO custom video player development)
+  - [ ] Create clickable timestamp links that open YouTube videos in new tabs at specific timestamps
 
-- [ ] Develop Claude 4 Sonnet chatbot that analyzes video transcripts and suggests relevant timestamps
+- [ ] Develop AI chatbot powered by Claude 4 Sonnet (NOT a template system) that analyzes video transcripts and suggests relevant timestamps
   - [ ] Build chat interface in student dashboard with message history and real-time typing indicators
-  - [ ] Integrate Anthropic Claude API with proper authentication and rate limiting
-  - [ ] Implement transcript chunking strategy to work within Claude's 200k token context limit
+  - [ ] Integrate Anthropic Claude 4 Sonnet API specifically - do NOT use any template systems or other LLMs
+  - [ ] Send actual video transcript content to Claude 4 Sonnet for intelligent analysis (not keyword matching)
+  - [ ] Implement transcript chunking strategy to work within Claude 4 Sonnet's 200k token context limit
   - [ ] Use Pinecone or another vector database service (not custom built) for semantic transcript search
-  - [ ] Parse Claude responses to extract timestamp ranges and format them as clickable video links
+  - [ ] Parse Claude 4 Sonnet's natural language responses to extract timestamp ranges and format them as clickable video links
 
-- [ ] Create AI-powered learning path system that builds custom video playlists
-  - [ ] Build recommendation algorithm that analyzes student queries and suggests ordered sequences of video clips
-  - [ ] Design playlist UI showing thumbnail previews and total watch time for each learning path
+- [ ] Create AI-powered learning path system that builds custom video playlists using Claude 4 Sonnet
+  - [ ] Use Claude 4 Sonnet to analyze student queries and suggest ordered sequences of YouTube video timestamps
+  - [ ] Design simple playlist UI showing YouTube video thumbnails and total watch time (NO custom player)
   - [ ] Store each student's custom playlists and watch progress in Firestore
-  - [ ] Implement continuous playback between video segments with smooth transitions
+  - [ ] Display playlist as a list of YouTube links with timestamps (NO continuous playback or custom transitions)
 
 ## Assignment and Progress Tracking System
 
@@ -58,12 +64,12 @@
   - [ ] Use a charting library (e.g., Recharts, Chart.js) for progress bars and visualizations
   - [ ] Show estimated time remaining for program completion based on student's pace
 
-- [ ] Create AI-powered insights dashboard for student progress
-  - [ ] Generate weekly progress reports analyzing completion rate, revenue growth, and engagement
-  - [ ] Identify struggling areas and suggest specific Greg Isenberg videos to review
-  - [ ] Predict likelihood of reaching revenue goals based on current trajectory
-  - [ ] Recommend peer students for collaboration based on complementary skills
-  - [ ] Send automated encouragement messages when students hit milestones
+- [ ] Create AI-powered insights dashboard for student progress using Claude 4 Sonnet exclusively
+  - [ ] Use Claude 4 Sonnet to generate weekly progress reports analyzing completion rate, revenue growth, and engagement
+  - [ ] Have Claude 4 Sonnet identify struggling areas and suggest specific Greg Isenberg videos to review
+  - [ ] Ask Claude 4 Sonnet to predict likelihood of reaching revenue goals based on current trajectory data
+  - [ ] Use Claude 4 Sonnet to recommend peer students for collaboration based on complementary skills
+  - [ ] Generate personalized encouragement messages with Claude 4 Sonnet when students hit milestones
 
 ## Student Communication System
 
@@ -73,11 +79,12 @@
   - [ ] Build notification system for when instructors provide feedback on submissions
   - [ ] Use an email template service (e.g., SendGrid, React Email) for branded email templates
 
-- [ ] Integrate chatbot for personalized progress queries
-  - [ ] Extend AI chatbot to answer questions like "What assignments do I have due this week?"
-  - [ ] Implement query handler for "What's my current completion percentage?"
-  - [ ] Create context-aware responses based on individual student data
-  - [ ] Build fallback mechanisms for queries the AI cannot answer
+- [ ] Integrate Claude 4 Sonnet chatbot for personalized progress queries (NOT a rule-based system)
+  - [ ] Send student questions directly to Claude 4 Sonnet API with their progress data as context
+  - [ ] Let Claude 4 Sonnet naturally answer "What assignments do I have due this week?" based on data
+  - [ ] Have Claude 4 Sonnet calculate and respond to "What's my current completion percentage?"
+  - [ ] Provide Claude 4 Sonnet with individual student context for personalized responses
+  - [ ] Use Claude 4 Sonnet to gracefully handle queries it cannot answer (no hard-coded responses)
 
 ## Revenue Tracking and Sharing System
 
@@ -112,13 +119,13 @@
 
 ## Live Sessions and Office Hours System
 
-- [ ] Build live video session system for weekly calls and office hours
-  - [ ] Use Zoom SDK/API to generate meeting links for live sessions (no custom video conferencing)
-  - [ ] Create calendar system showing upcoming office hours with instructor and weekly expert calls
-  - [ ] Implement session registration allowing students to RSVP for limited-capacity sessions
-  - [ ] Use Zoom's cloud recording feature and store recording URLs in Firebase (no custom recording)
-  - [ ] Create session replay interface where students can watch missed sessions with playback controls
-  - [ ] Send automated email reminders 24 hours and 1 hour before each live session
+- [ ] Build live video session system for weekly calls and office hours using Zoom links only
+  - [ ] Use Zoom SDK/API to generate meeting links and share them with students (NO custom video player)
+  - [ ] Create calendar displaying Zoom meeting links for upcoming office hours and weekly expert calls
+  - [ ] Implement session registration where students RSVP and receive Zoom meeting links via email
+  - [ ] Use Zoom's cloud recording feature and share recording links with students (NO embedded video player)
+  - [ ] Create simple list of past session recordings with direct Zoom recording links (NO custom playback interface)
+  - [ ] Send automated emails with Zoom meeting links 24 hours and 1 hour before each live session
 
 ## Student Onboarding Flow
 
@@ -145,13 +152,13 @@
   - [ ] Include revenue proof upload for assignments requiring business validation
   - [ ] Build submission preview before final submit with ability to edit
 
-- [ ] Develop AI-powered feedback for business and technical assignments
-  - [ ] Create Cloud Function triggering Claude API when assignments are submitted
-  - [ ] Analyze business model viability, market fit, and revenue potential for business plans
-  - [ ] Review code quality, architecture, and best practices for technical submissions
-  - [ ] Check n8n workflow efficiency and suggest automation improvements
-  - [ ] Generate specific action items for improving business metrics
-  - [ ] Format feedback with clear sections: strengths, improvements needed, next steps
+- [ ] Develop AI-powered feedback for business and technical assignments using Claude 4 Sonnet ONLY
+  - [ ] Create Cloud Function that sends assignment content to Claude 4 Sonnet API for analysis (NOT templates)
+  - [ ] Use Claude 4 Sonnet to analyze business model viability, market fit, and revenue potential
+  - [ ] Have Claude 4 Sonnet review code quality, architecture, and best practices for technical submissions
+  - [ ] Send n8n workflows to Claude 4 Sonnet for efficiency analysis and improvement suggestions
+  - [ ] Let Claude 4 Sonnet generate specific, personalized action items for improving business metrics
+  - [ ] Parse Claude 4 Sonnet's responses to format feedback with clear sections: strengths, improvements needed, next steps
 
 ## Instructor Review Interface
 
@@ -214,10 +221,10 @@
 ## Mobile Responsive Implementation
 
 - [ ] Ensure all platform features work seamlessly on mobile devices
-  - [ ] Implement responsive design for student dashboard, YouTube embeds, and chat interface
+  - [ ] Implement responsive design for student dashboard, YouTube embeds (standard iframe only), and chat interface
   - [ ] Create mobile-optimized navigation with hamburger menu and touch gestures
   - [ ] Ensure assignment submission works on mobile with camera integration for screenshots
-  - [ ] Optimize video playback for mobile bandwidth and screen sizes
+  - [ ] Ensure YouTube iframe embeds work on mobile (NO custom video player optimizations)
   - [ ] Test all critical flows on iOS and Android devices
 
 ## Performance and Scalability
