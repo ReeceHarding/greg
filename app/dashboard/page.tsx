@@ -264,43 +264,46 @@ async function DashboardContent() {
 
   return (
     <div className="container mx-auto space-y-8 p-6 lg:p-8">
-      {/* Welcome Section - Modern and sleek */}
-      <Card className="relative overflow-hidden rounded-2xl border-0 bg-white p-8 shadow-sm">
+      {/* Welcome Section - Modern and sleek with blue theme */}
+      <Card className="relative overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-blue-600 to-blue-500 p-8 shadow-lg">
         <div className="relative">
-          <h1 className="mb-2 text-3xl font-semibold text-gray-900">
-            Welcome back, {profile?.displayName || "User"}!
+          <h1 className="mb-2 text-3xl font-semibold text-white">
+            Welcome back, {profile?.displayName || "Entrepreneur"}!
           </h1>
-          <p className="mb-6 text-gray-600">
-            Your dashboard is ready with all the tools you need.
+          <p className="mb-6 text-blue-100">
+            Your entrepreneurship dashboard is ready. Time to build something amazing.
           </p>
           <Button
             size="default"
-            className="bg-gray-900 text-white hover:bg-gray-800"
+            className="bg-white text-blue-600 hover:bg-blue-50 font-semibold"
+            asChild
           >
-            Get Started
-            <ArrowRight className="ml-2 size-4" />
+            <Link href="/dashboard/assignments">
+              Continue Building
+              <ArrowRight className="ml-2 size-4" />
+            </Link>
           </Button>
         </div>
       </Card>
 
-      {/* Stats Grid - Following the metric card pattern from the guide */}
+      {/* Stats Grid - Following the metric card pattern from the guide with blue theme */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
           <div
             key={stat.title}
-            className="group relative rounded-2xl border border-purple-100/20 bg-white/50 p-6 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-purple-300/40 hover:shadow-[0_8px_30px_rgba(147,51,234,0.15)]"
+            className="group relative rounded-2xl border border-blue-100/20 bg-white/50 p-6 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-blue-300/40 hover:shadow-[0_8px_30px_rgba(59,130,246,0.15)]"
           >
             <div className="mb-4 flex items-start justify-between">
               <h3 className="text-muted-foreground text-sm font-medium">
                 {stat.title}
               </h3>
-              <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-purple-400 shadow-lg shadow-purple-500/20">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 shadow-lg shadow-blue-500/20">
                 <stat.icon className="size-5 text-white" />
               </div>
             </div>
 
             <div className="mb-3">
-              <span className="font-instrument bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-3xl font-bold text-transparent">
+              <span className="font-instrument bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
                 {stat.value}
               </span>
             </div>
@@ -330,7 +333,7 @@ async function DashboardContent() {
               {stat.trend.map((value, i) => (
                 <div
                   key={i}
-                  className="flex-1 rounded-t bg-purple-200/50"
+                  className="flex-1 rounded-t bg-blue-200/50"
                   style={{
                     height: `${(value / Math.max(...stat.trend)) * 100}%`,
                     opacity: i === stat.trend.length - 1 ? 1 : 0.6
@@ -342,115 +345,97 @@ async function DashboardContent() {
         ))}
       </div>
 
-      {/* Membership Status - Enhanced design */}
-      <Card className="relative overflow-hidden border-purple-200/30 bg-gradient-to-r from-purple-50 to-purple-100/50">
-        <div className="absolute right-0 top-0 size-40 bg-purple-300/20 blur-3xl" />
-
-        <CardHeader className="relative">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="font-instrument text-2xl font-semibold">
-                Membership Status
-              </CardTitle>
-              <CardDescription className="mt-1 text-base">
-                Your current plan and benefits
-              </CardDescription>
-            </div>
-            <Badge
-              variant={profile?.membership === "pro" ? "gradient" : "secondary"}
-              size="lg"
-              className="font-semibold uppercase"
-            >
-              {profile?.membership || "free"} plan
-            </Badge>
-          </div>
-        </CardHeader>
-
-        <CardContent className="relative">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-muted-foreground">
-                {profile?.membership === "pro" ? (
-                  <>
-                    <span className="text-foreground font-medium">
-                      Unlimited access
-                    </span>{" "}
-                    to all premium features and priority support
-                  </>
-                ) : (
-                  <>
-                    Upgrade to{" "}
-                    <span className="font-medium text-purple-600">Pro</span> to
-                    unlock advanced features and priority support
-                  </>
-                )}
-              </p>
-              {profile?.membership === "pro" && (
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1 text-purple-600">
-                    <div className="size-2 animate-pulse rounded-full bg-purple-600" />
-                    <span>Active</span>
-                  </div>
-                  <span className="text-muted-foreground">
-                    Next billing: January 15, 2024
-                  </span>
-                </div>
-              )}
-            </div>
-            {profile?.membership !== "pro" && (
-              <Link href="/pricing">
-                <Button variant="gradient" className="group">
-                  <Sparkles className="mr-2 size-4 transition-transform group-hover:rotate-12" />
-                  Upgrade to Pro
-                  <ArrowUpRight className="ml-1 size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                </Button>
-              </Link>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions - Enhanced with better visual hierarchy */}
+      {/* Quick Actions - Enhanced with better visual hierarchy and entrepreneurship focus */}
       <div>
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="font-instrument text-2xl font-semibold">
-              Quick Actions
+              Take Action
             </h2>
             <p className="text-muted-foreground mt-1">
-              Common tasks and settings
+              Build your business step by step
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {quickActions.map((action, index) => (
-            <Link key={action.title} href={action.href}>
-              <Card className="group h-full cursor-pointer border-purple-100/20 bg-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-purple-300/40 hover:shadow-[0_8px_30px_rgba(147,51,234,0.15)]">
-                <CardHeader>
-                  <div className="flex items-start gap-4">
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-gray-50 transition-colors group-hover:bg-gray-100">
-                      <action.icon className="size-6 text-purple-600" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <CardTitle className="text-lg font-semibold transition-colors group-hover:text-purple-600">
-                        {action.title}
-                      </CardTitle>
-                      <CardDescription className="text-muted-foreground text-sm">
-                        {action.description}
-                      </CardDescription>
-                      <div className="pt-2">
-                        <span className="inline-flex items-center text-sm font-medium text-purple-600 transition-all group-hover:gap-2">
-                          {action.actionText}
-                          <ArrowUpRight className="ml-1 size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                        </span>
-                      </div>
+          <Link href="/dashboard/assignments">
+            <Card className="group h-full cursor-pointer border-blue-100/20 bg-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-blue-300/40 hover:shadow-[0_8px_30px_rgba(59,130,246,0.15)]">
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-50 transition-colors group-hover:bg-blue-100">
+                    <FolderOpen className="size-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <CardTitle className="text-lg font-semibold transition-colors group-hover:text-blue-600">
+                      Weekly Check-ins
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground text-sm">
+                      Submit your progress and get feedback
+                    </CardDescription>
+                    <div className="pt-2">
+                      <span className="inline-flex items-center text-sm font-medium text-blue-600 transition-all group-hover:gap-2">
+                        {pendingSubmissions > 0 ? "Submit this week's progress" : "View assignments"}
+                        <ArrowUpRight className="ml-1 size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                      </span>
                     </div>
                   </div>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/dashboard/videos">
+            <Card className="group h-full cursor-pointer border-blue-100/20 bg-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-blue-300/40 hover:shadow-[0_8px_30px_rgba(59,130,246,0.15)]">
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-50 transition-colors group-hover:bg-blue-100">
+                    <Activity className="size-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <CardTitle className="text-lg font-semibold transition-colors group-hover:text-blue-600">
+                      Business Training
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground text-sm">
+                      Watch Greg's entrepreneurship videos
+                    </CardDescription>
+                    <div className="pt-2">
+                      <span className="inline-flex items-center text-sm font-medium text-blue-600 transition-all group-hover:gap-2">
+                        Continue watching
+                        <ArrowUpRight className="ml-1 size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/dashboard/chat">
+            <Card className="group h-full cursor-pointer border-blue-100/20 bg-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-blue-300/40 hover:shadow-[0_8px_30px_rgba(59,130,246,0.15)]">
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-50 transition-colors group-hover:bg-blue-100">
+                    <Zap className="size-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <CardTitle className="text-lg font-semibold transition-colors group-hover:text-blue-600">
+                      AI Business Coach
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground text-sm">
+                      Get instant help building your business
+                    </CardDescription>
+                    <div className="pt-2">
+                      <span className="inline-flex items-center text-sm font-medium text-blue-600 transition-all group-hover:gap-2">
+                        Ask a question
+                        <ArrowUpRight className="ml-1 size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
         </div>
       </div>
 
@@ -460,10 +445,10 @@ async function DashboardContent() {
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="mb-1 text-sm font-medium text-gray-500">
-                Total Submissions
+                Total Check-ins
               </p>
               <div className="flex items-baseline gap-2">
-                <span className="font-instrument text-3xl font-bold text-purple-600">
+                <span className="font-instrument text-3xl font-bold text-blue-600">
                   {submissions.length}
                 </span>
                 <span className="text-sm font-medium text-green-600">
@@ -471,21 +456,21 @@ async function DashboardContent() {
                 </span>
               </div>
             </div>
-            <div className="flex size-10 items-center justify-center rounded-xl border border-purple-600 bg-white shadow-sm">
-              <FolderOpen className="size-5 text-purple-600" />
+            <div className="flex size-10 items-center justify-center rounded-xl border border-blue-600 bg-white shadow-sm">
+              <FolderOpen className="size-5 text-blue-600" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
+        {/* Recent Activity - Updated with entrepreneurship focus */}
         <Card className="relative overflow-hidden border-gray-200 bg-white">
-          <div className="absolute right-0 top-0 size-40 bg-purple-50/30 blur-3xl" />
+          <div className="absolute right-0 top-0 size-40 bg-blue-50/30 blur-3xl" />
           <CardHeader className="relative">
             <CardTitle className="text-2xl font-bold text-black">
-              Recent Activity
+              Your Progress
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Your latest updates and notifications
+              Recent milestones and achievements
             </CardDescription>
           </CardHeader>
           <CardContent className="relative space-y-4">
@@ -495,28 +480,72 @@ async function DashboardContent() {
                 className="flex items-start gap-4 rounded-lg p-4 transition-colors hover:bg-gray-50"
               >
                 <div className="mt-0.5">
-                  <div className="size-2 animate-pulse rounded-full bg-purple-600" />
+                  <div className="size-2 animate-pulse rounded-full bg-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="mb-1 font-medium text-black">
-                    {activity.title}
-                  </p>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="text-sm font-medium">{activity.title}</h4>
+                  <p className="text-muted-foreground text-xs">
                     {activity.description}
                   </p>
-                  <p className="mt-1 text-xs text-gray-400">{activity.time}</p>
                 </div>
+                <span className="text-muted-foreground text-xs">
+                  {activity.time}
+                </span>
               </div>
             ))}
           </CardContent>
-          <CardFooter>
-            <Button variant="ghost" className="w-full">
-              View all activity
-              <ArrowRight className="ml-2 size-4" />
-            </Button>
-          </CardFooter>
         </Card>
       </div>
+
+      {/* Next Steps Card */}
+      <Card className="relative overflow-hidden border-blue-200/30 bg-gradient-to-r from-blue-50 to-blue-100/50">
+        <div className="absolute right-0 top-0 size-40 bg-blue-300/20 blur-3xl" />
+        <CardHeader className="relative">
+          <CardTitle className="font-instrument text-2xl font-semibold">
+            Your Next Step
+          </CardTitle>
+          <CardDescription className="mt-1 text-base">
+            Keep building momentum
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="relative">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <p className="text-muted-foreground">
+                {completedSubmissions === 0 ? (
+                  <>
+                    <span className="text-foreground font-medium">
+                      Start with Week 1
+                    </span>{" "}
+                    - Set up your business foundation and digital presence
+                  </>
+                ) : completedSubmissions < totalAssignments ? (
+                  <>
+                    <span className="text-foreground font-medium">
+                      Continue with Week {completedSubmissions + 1}
+                    </span>{" "}
+                    - Keep building on your progress
+                  </>
+                ) : (
+                  <>
+                    <span className="text-foreground font-medium">
+                      Congratulations!
+                    </span>{" "}
+                    You've completed all assignments. Time to scale your business!
+                  </>
+                )}
+              </p>
+            </div>
+            <Link href="/dashboard/assignments">
+              <Button variant="gradient" className="group bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600">
+                <Sparkles className="mr-2 size-4 transition-transform group-hover:rotate-12" />
+                {completedSubmissions === 0 ? "Start Building" : "Continue Building"}
+                <ArrowUpRight className="ml-1 size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

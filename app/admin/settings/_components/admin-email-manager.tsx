@@ -154,10 +154,10 @@ export default function AdminEmailManager({
           Users with these email addresses will have admin access when they sign in
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="p-6 space-y-6">
         {/* Add new admin email form */}
         <div className="space-y-2">
-          <Label htmlFor="new-email">Add Admin Email</Label>
+          <Label htmlFor="new-email" className="text-sm">Add Admin Email</Label>
           <div className="flex gap-2">
             <Input
               id="new-email"
@@ -171,19 +171,21 @@ export default function AdminEmailManager({
                 }
               }}
               disabled={isAdding}
+              className="text-sm"
             />
             <Button
               onClick={handleAddEmail}
               disabled={isAdding || !newEmail}
+              size="sm"
             >
               {isAdding ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                   Adding...
                 </>
               ) : (
                 <>
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-3 w-3" />
                   Add Admin
                 </>
               )}
@@ -196,25 +198,25 @@ export default function AdminEmailManager({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Added By</TableHead>
-                <TableHead>Added At</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-xs">Email</TableHead>
+                <TableHead className="text-xs">Added By</TableHead>
+                <TableHead className="text-xs">Added At</TableHead>
+                <TableHead className="text-right text-xs">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {adminEmails.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground text-sm">
                     No admin emails configured
                   </TableCell>
                 </TableRow>
               ) : (
                 adminEmails.map((admin) => (
                   <TableRow key={admin.email}>
-                    <TableCell className="font-medium">{admin.email}</TableCell>
-                    <TableCell>{admin.addedBy}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium text-sm">{admin.email}</TableCell>
+                    <TableCell className="text-sm">{admin.addedBy}</TableCell>
+                    <TableCell className="text-sm">
                       {admin.addedAt 
                         ? typeof admin.addedAt === 'string'
                           ? new Date(admin.addedAt).toLocaleDateString()
@@ -234,9 +236,9 @@ export default function AdminEmailManager({
                         disabled={removingEmail === admin.email || admin.email === currentUserEmail}
                       >
                         {removingEmail === admin.email ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-3 w-3 text-destructive" />
                         )}
                       </Button>
                     </TableCell>
@@ -248,7 +250,7 @@ export default function AdminEmailManager({
         </div>
 
         <div className="bg-muted/50 rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             <strong>Note:</strong> Users need to sign out and sign back in for admin role changes to take effect.
           </p>
         </div>

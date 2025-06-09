@@ -5,22 +5,55 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
-import { RefreshCw, Calendar, FileText, Plus } from "lucide-react"
+import { RefreshCw, Calendar, FileText, Plus, Users, CheckCircle, Clock, AlertCircle } from "lucide-react"
 import { SerializedFirebaseAssignment } from "@/types/firebase-types"
 import { format } from "date-fns"
 
+interface AssignmentStat {
+  assignmentId: string
+  totalStudents: number
+  completedCount: number
+  pendingCount: number
+  needsRevisionCount: number
+  completionRate: number
+}
+
 interface AssignmentsManagementClientProps {
   initialAssignments: SerializedFirebaseAssignment[]
+  assignmentStats: AssignmentStat[]
 }
 
 export default function AssignmentsManagementClient({ 
-  initialAssignments 
+  initialAssignments,
+  assignmentStats 
 }: AssignmentsManagementClientProps) {
   const { toast } = useToast()
   const [assignments, setAssignments] = useState(initialAssignments)
   const [isSeeding, setIsSeeding] = useState(false)
   
   console.log("[AssignmentsManagementClient] Rendering with", assignments.length, "assignments")
+  
+  // Helper to get stats for an assignment
+  const getAssignmentStats = (assignmentId: string) => {
+    return assignmentStats.find(stat => stat.assignmentId === assignmentId) || {
+      assignmentId,
+      totalStudents: 0,
+      completedCount: 0,
+      pendingCount: 0,
+      needsRevisionCount: 0,
+      completionRate: 0
+    }
+  }
+  
+  // Calculate overall stats
+  const overallStats = {
+    totalSubmissions: assignmentStats.reduce((sum, stat) => sum + stat.completedCount + stat.pendingCount + stat.needsRevisionCount, 0),
+    totalCompleted: assignmentStats.reduce((sum, stat) => sum + stat.completedCount, 0),
+    totalPending: assignmentStats.reduce((sum, stat) => sum + stat.pendingCount, 0),
+    averageCompletion: assignmentStats.length > 0 
+      ? Math.round(assignmentStats.reduce((sum, stat) => sum + stat.completionRate, 0) / assignmentStats.length)
+      : 0
+  }
   
   // Handle seeding assignments
   const handleSeedAssignments = async () => {
@@ -102,10 +135,10 @@ export default function AssignmentsManagementClient({
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium">Total Assignments</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Assignments</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{assignments.length}</div>
@@ -114,21 +147,37 @@ export default function AssignmentsManagementClient({
         
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium">Weeks Covered</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Submissions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Object.keys(assignmentsByWeek).length}</div>
+            <div className="text-2xl font-bold">{overallStats.totalSubmissions}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {overallStats.totalCompleted} completed
+            </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium">Next Due Date</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {format(new Date(assignments[0].dueDate), "MMM d")}
-            </div>
+            <div className="text-2xl font-bold text-orange-600">{overallStats.totalPending}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Need your review
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Avg Completion</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{overallStats.averageCompletion}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Across all weeks
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -141,7 +190,7 @@ export default function AssignmentsManagementClient({
             <Card key={week}>
               <CardHeader>
                 <CardTitle className="text-lg">Week {week}</CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm">
                   {weekAssignments.length} assignment{weekAssignments.length !== 1 ? "s" : ""}
                 </CardDescription>
               </CardHeader>
@@ -149,33 +198,71 @@ export default function AssignmentsManagementClient({
                 <div className="space-y-3">
                   {weekAssignments
                     .sort((a, b) => a.order - b.order)
-                    .map((assignment) => (
-                      <div
-                        key={assignment.assignmentId}
-                        className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <h4 className="font-medium">{assignment.title}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {assignment.description}
-                          </p>
-                          <div className="flex items-center gap-4 mt-2 text-sm">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              Due: {format(new Date(assignment.dueDate), "MMM d, yyyy")}
-                            </span>
-                            <Badge variant="secondary">
-                              {assignment.theme}
-                            </Badge>
+                    .map((assignment) => {
+                      const stats = getAssignmentStats(assignment.assignmentId)
+                      
+                      return (
+                        <div
+                          key={assignment.assignmentId}
+                          className="p-4 bg-muted/50 rounded-lg"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm">{assignment.title}</h4>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {assignment.description}
+                              </p>
+                              <div className="flex items-center gap-4 mt-2 text-xs">
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  Due: {format(new Date(assignment.dueDate), "MMM d, yyyy")}
+                                </span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {assignment.theme}
+                                </Badge>
+                              </div>
+                            </div>
+                            <Button variant="outline" size="sm">
+                              <FileText className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          
+                          {/* Assignment Stats */}
+                          <div className="mt-3 pt-3 border-t grid grid-cols-4 gap-4 text-xs">
+                            <div className="flex items-center gap-1">
+                              <Users className="w-3 h-3 text-muted-foreground" />
+                              <span>{stats.totalStudents} students</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3 text-green-600" />
+                              <span>{stats.completedCount} completed</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-orange-600" />
+                              <span>{stats.pendingCount} pending</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3 text-red-600" />
+                              <span>{stats.needsRevisionCount} revisions</span>
+                            </div>
+                          </div>
+                          
+                          {/* Completion bar */}
+                          <div className="mt-2">
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-muted-foreground">Completion</span>
+                              <span className="font-medium">{stats.completionRate}%</span>
+                            </div>
+                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
+                                style={{ width: `${stats.completionRate}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            <FileText className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                 </div>
               </CardContent>
             </Card>

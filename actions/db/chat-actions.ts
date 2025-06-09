@@ -5,6 +5,36 @@ import { ActionState } from "@/types"
 import { FirebaseChat, ChatMessage } from "@/types/firebase-types"
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 
+// Helper function to serialize timestamps
+function serializeTimestamp(timestamp: any): Date {
+  if (timestamp instanceof Date) {
+    return timestamp
+  }
+  if (timestamp && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate()
+  }
+  if (timestamp && timestamp._seconds) {
+    return new Date(timestamp._seconds * 1000)
+  }
+  return new Date()
+}
+
+// Helper function to serialize chat for client components
+function serializeChat(chat: any): FirebaseChat {
+  return {
+    ...chat,
+    createdAt: serializeTimestamp(chat.createdAt),
+    metadata: {
+      ...chat.metadata,
+      lastMessageAt: serializeTimestamp(chat.metadata?.lastMessageAt)
+    },
+    messages: chat.messages?.map((msg: any) => ({
+      ...msg,
+      timestamp: serializeTimestamp(msg.timestamp)
+    })) || []
+  }
+}
+
 // Create a new chat message
 export async function createChatMessageAction(
   data: {
@@ -151,9 +181,13 @@ export async function getUserChatsAction(
       .orderBy('metadata.lastMessageAt', 'desc')
       .get()
     
-    const chats = chatsSnapshot.docs.map(doc => ({
-      ...doc.data()
-    } as FirebaseChat))
+    const chats = chatsSnapshot.docs.map(doc => {
+      const data = doc.data()
+      return serializeChat({
+        ...data,
+        chatId: doc.id
+      })
+    })
     
     console.log(`[Chat Actions] Retrieved ${chats.length} chats`)
     

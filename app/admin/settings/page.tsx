@@ -9,8 +9,8 @@ export default async function AdminSettingsPage() {
   return (
     <div className="container mx-auto py-10 space-y-10">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Admin Settings</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-semibold mb-2">Admin Settings</h1>
+        <p className="text-muted-foreground text-sm">
           Manage admin access and platform settings
         </p>
       </div>
@@ -18,7 +18,7 @@ export default async function AdminSettingsPage() {
       <div className="space-y-8">
         <section className="space-y-4">
           <div>
-            <h2 className="text-2xl font-semibold mb-1">Admin Access</h2>
+            <h2 className="text-lg font-semibold mb-1">Admin Access</h2>
             <p className="text-sm text-muted-foreground">
               Manage email addresses that have admin access to the platform
             </p>

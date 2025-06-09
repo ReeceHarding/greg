@@ -248,75 +248,127 @@ export default function ChatClient({ userId }: ChatClientProps) {
     textareaRef.current?.focus()
   }
   
-  // Function to render message content with clickable timestamps
+  // Function to render message content with markdown support and clickable timestamps
   const renderMessageContent = (content: string, role: "user" | "assistant") => {
-    if (role === "user" || !video) {
-      // For user messages or when no video context, just split by newlines
-      return content.split("\n").map((paragraph, idx) => (
-        <p key={idx} className="mb-2 last:mb-0">
-          {paragraph}
-        </p>
-      ))
+    // Parse markdown with React
+    const parseMarkdown = (text: string) => {
+      // Handle code blocks
+      text = text.replace(/```([^`]*?)```/g, (match, code) => {
+        return `<pre class="bg-gray-100 rounded-lg p-3 my-2 overflow-x-auto"><code>${code.trim()}</code></pre>`
+      })
+      
+      // Handle inline code
+      text = text.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>')
+      
+      // Handle bold
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      
+      // Handle italic
+      text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      
+      // Handle links
+      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
+      
+      // Handle bullet points
+      text = text.replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
+      // Wrap multiple li elements in ul
+      text = text.replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => `<ul class="list-disc list-inside my-2">${match}</ul>`)
+      
+      // Handle numbered lists
+      text = text.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>')
+      
+      return text
     }
     
-    // For assistant messages with video context, parse timestamps
-    const timestampRegex = /\[([^\]]+)\]\(timestamp:(\d+)\)/g
-    
-    return content.split("\n").map((paragraph, idx) => {
-      const parts = []
-      let lastIndex = 0
-      let match
+    // For assistant messages, parse timestamps and markdown
+    if (role === "assistant") {
+      const timestampRegex = /\[([^\]]+)\]\(timestamp:(\d+)\)/g
       
-      while ((match = timestampRegex.exec(paragraph)) !== null) {
-        // Add text before the timestamp
-        if (match.index > lastIndex) {
-          parts.push(paragraph.substring(lastIndex, match.index))
+      return content.split("\n").map((paragraph, idx) => {
+        // First, handle timestamps if there's a video context
+        if (video) {
+          const parts: (string | React.ReactElement)[] = []
+          let lastIndex = 0
+          let match
+          
+          // Reset regex lastIndex for each paragraph
+          timestampRegex.lastIndex = 0
+          
+          while ((match = timestampRegex.exec(paragraph)) !== null) {
+            // Add text before the timestamp
+            if (match.index > lastIndex) {
+              parts.push(parseMarkdown(paragraph.substring(lastIndex, match.index)))
+            }
+            
+            // Add the clickable timestamp
+            const timestampText = match[1]
+            const seconds = parseInt(match[2])
+            
+            parts.push(
+              <button
+                key={`timestamp-${idx}-${match.index}`}
+                onClick={() => {
+                  window.location.href = `/dashboard/videos/${video.videoId}?t=${seconds}`
+                }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md text-sm font-medium transition-colors duration-200 mx-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {timestampText}
+              </button>
+            )
+            
+            lastIndex = match.index + match[0].length
+          }
+          
+          // Add remaining text
+          if (lastIndex < paragraph.length) {
+            parts.push(parseMarkdown(paragraph.substring(lastIndex)))
+          }
+          
+          // If we have mixed content, render it differently
+          if (parts.length > 0) {
+            return (
+              <div key={idx} className="mb-2 last:mb-0">
+                {parts.map((part, partIdx) => {
+                  if (typeof part === 'string') {
+                    return <span key={partIdx} dangerouslySetInnerHTML={{ __html: part }} />
+                  }
+                  return part
+                })}
+              </div>
+            )
+          }
         }
         
-        // Add the clickable timestamp
-        const timestampText = match[1]
-        const seconds = parseInt(match[2])
-        
-        parts.push(
-          <button
-            key={`timestamp-${idx}-${match.index}`}
-            onClick={() => {
-              // Navigate to video page with timestamp
-              window.location.href = `/dashboard/videos/${video.videoId}?t=${seconds}`
-            }}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-sm font-medium transition-colors duration-200"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {timestampText}
-          </button>
+        // No timestamps found or no video context, just parse markdown
+        return (
+          <div 
+            key={idx} 
+            className="mb-2 last:mb-0"
+            dangerouslySetInnerHTML={{ __html: parseMarkdown(paragraph) }}
+          />
         )
-        
-        lastIndex = match.index + match[0].length
-      }
-      
-      // Add remaining text
-      if (lastIndex < paragraph.length) {
-        parts.push(paragraph.substring(lastIndex))
-      }
-      
-      return (
-        <p key={idx} className="mb-2 last:mb-0">
-          {parts.length > 0 ? parts : paragraph}
-        </p>
-      )
-    })
+      })
+    }
+    
+    // For user messages, just split by newlines
+    return content.split("\n").map((paragraph, idx) => (
+      <p key={idx} className="mb-2 last:mb-0">
+        {paragraph}
+      </p>
+    ))
   }
   
   return (
-    <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
+    <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-8">
         <div className="flex flex-col gap-8 max-w-4xl mx-auto">
           {/* Show video context if available */}
           {video && messages.length === 0 && (
-            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 mb-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4">
               <p className="text-sm font-medium mb-1">Discussing video:</p>
               <p className="text-sm text-muted-foreground">{video.title}</p>
             </div>
@@ -327,64 +379,80 @@ export default function ChatClient({ userId }: ChatClientProps) {
             <>
               {/* Welcome message */}
               <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center flex-shrink-0 shadow-[0_4px_20px_rgba(59,130,246,0.3)]">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center flex-shrink-0 shadow-[0_4px_20px_rgba(59,130,246,0.3)]">
                   <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-3xl p-6 max-w-2xl border border-primary/20">
-                    <p className="font-semibold text-lg mb-3">Welcome to Your AI Assistant! 👋</p>
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-3xl p-6 max-w-2xl border border-blue-200">
+                    <p className="font-semibold text-lg mb-3">Your AI Business Coach is here! 🚀</p>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
-                      I'm here to help you succeed in the AI Summer Camp. I'm powered by Claude and can assist you with:
+                      I'm powered by Claude 4 and trained on all of Greg's content. I can help you:
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex items-start gap-3 p-3 bg-white/80 rounded-xl">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-sm mb-1">Video Content</p>
-                          <p className="text-xs text-muted-foreground">Find specific timestamps and key insights</p>
+                          <p className="font-medium text-sm mb-1">Find Video Insights</p>
+                          <p className="text-xs text-muted-foreground">Get specific timestamps and takeaways</p>
                         </div>
                       </div>
                       
                       <div className="flex items-start gap-3 p-3 bg-white/80 rounded-xl">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-sm mb-1">Assignments</p>
-                          <p className="text-xs text-muted-foreground">Get clarity on requirements and feedback</p>
+                          <p className="font-medium text-sm mb-1">Weekly Check-ins</p>
+                          <p className="text-xs text-muted-foreground">Get help with your assignments</p>
                         </div>
                       </div>
                       
                       <div className="flex items-start gap-3 p-3 bg-white/80 rounded-xl">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           </svg>
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm mb-1">Business Strategy</p>
-                          <p className="text-xs text-muted-foreground">Get personalized advice for your startup</p>
+                          <p className="text-xs text-muted-foreground">Get personalized advice</p>
                         </div>
                       </div>
                       
                       <div className="flex items-start gap-3 p-3 bg-white/80 rounded-xl">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                           </svg>
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm mb-1">Technical Help</p>
-                          <p className="text-xs text-muted-foreground">Debug code and solve technical challenges</p>
+                          <p className="text-xs text-muted-foreground">Debug and solve problems</p>
                         </div>
+                      </div>
+                    </div>
+                    
+                    {/* Add video recommendations */}
+                    <div className="mt-4 p-3 bg-white/80 rounded-xl">
+                      <p className="text-sm font-medium mb-2">📺 Start with these videos:</p>
+                      <div className="space-y-1">
+                        <a href="/dashboard/videos" className="text-xs text-blue-600 hover:underline block">
+                          • "How to Find Your First 100 Customers" - Essential strategies
+                        </a>
+                        <a href="/dashboard/videos" className="text-xs text-blue-600 hover:underline block">
+                          • "Building Your MVP in 2 Weeks" - Step-by-step guide
+                        </a>
+                        <a href="/dashboard/videos" className="text-xs text-blue-600 hover:underline block">
+                          • "AI Tools for Entrepreneurs" - Must-have toolkit
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -396,22 +464,22 @@ export default function ChatClient({ userId }: ChatClientProps) {
                 <p className="text-sm font-medium text-muted-foreground mb-4">Try asking:</p>
                 <div className="flex flex-wrap gap-3">
                   <button 
-                    onClick={() => handleExampleQuestion("What's the best way to find my first 100 customers?")}
-                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-primary/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
+                    onClick={() => handleExampleQuestion("What's the best way to validate my business idea?")}
+                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-blue-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
                   >
-                    What's the best way to find my first 100 customers?
+                    What's the best way to validate my business idea?
                   </button>
                   <button 
-                    onClick={() => handleExampleQuestion("How do I price my AI product?")}
-                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-primary/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
+                    onClick={() => handleExampleQuestion("How do I find my first customers?")}
+                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-blue-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
                   >
-                    How do I price my AI product?
+                    How do I find my first customers?
                   </button>
                   <button 
-                    onClick={() => handleExampleQuestion("Show me examples of successful MVPs")}
-                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-primary/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
+                    onClick={() => handleExampleQuestion("Show me successful AI startup examples")}
+                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-blue-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
                   >
-                    Show me examples of successful MVPs
+                    Show me successful AI startup examples
                   </button>
                 </div>
               </div>
@@ -423,7 +491,7 @@ export default function ChatClient({ userId }: ChatClientProps) {
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
                   message.role === "user" 
                     ? "bg-gradient-to-br from-gray-600 to-gray-700 shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
-                    : "bg-gradient-to-br from-primary to-primary/80 shadow-[0_4px_20px_rgba(59,130,246,0.3)]"
+                    : "bg-gradient-to-br from-blue-600 to-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.3)]"
                 }`}>
                   {message.role === "user" ? (
                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -439,7 +507,7 @@ export default function ChatClient({ userId }: ChatClientProps) {
                   <div className={`rounded-3xl p-6 max-w-2xl ${
                     message.role === "user"
                       ? "bg-gray-100"
-                      : "bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20"
+                      : "bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200"
                   }`}>
                     <div className="prose prose-sm max-w-none">
                       {renderMessageContent(message.content, message.role)}
@@ -456,17 +524,17 @@ export default function ChatClient({ userId }: ChatClientProps) {
           {/* Loading indicator */}
           {isLoading && (
             <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center flex-shrink-0 shadow-[0_4px_20px_rgba(59,130,246,0.3)]">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center flex-shrink-0 shadow-[0_4px_20px_rgba(59,130,246,0.3)]">
                 <svg className="w-7 h-7 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-3xl p-6 max-w-2xl border border-primary/20">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-3xl p-6 max-w-2xl border border-blue-200">
                   <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
                   </div>
                 </div>
               </div>
@@ -487,29 +555,20 @@ export default function ChatClient({ userId }: ChatClientProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask me anything about videos, assignments, or building your AI business..."
-                className="w-full min-h-[60px] max-h-[120px] px-6 py-4 pr-16 bg-white border border-border/40 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
+                placeholder="Ask about business strategies, video insights, or get help with your startup..."
+                className="w-full min-h-[60px] max-h-[120px] px-6 py-4 bg-white border border-border/40 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
                 rows={1}
                 disabled={isLoading}
               />
-              <button
-                className="absolute right-3 bottom-3 p-2 text-muted-foreground hover:text-primary transition-colors duration-200"
-                title="Attach file"
-                disabled={isLoading}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                </svg>
-              </button>
             </div>
             <button
               onClick={sendMessage}
-              className={`px-8 py-4 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-white rounded-2xl font-medium shadow-[0_10px_40px_rgba(59,130,246,0.3)] hover:shadow-[0_15px_50px_rgba(59,130,246,0.4)] transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 ${
+              className={`px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-2xl font-medium shadow-[0_10px_40px_rgba(59,130,246,0.3)] hover:shadow-[0_15px_50px_rgba(59,130,246,0.4)] transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 ${
                 (!input.trim() || isLoading) ? "opacity-50 cursor-not-allowed" : ""
               }`}
               disabled={!input.trim() || isLoading}
             >
-              <span>{isLoading ? "Thinking..." : "Send Message"}</span>
+              <span>{isLoading ? "Thinking..." : "Send"}</span>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
@@ -518,13 +577,13 @@ export default function ChatClient({ userId }: ChatClientProps) {
           
           <div className="mt-4 flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              {video ? `Discussing: ${video.title}` : "Ask questions about any video, assignment, or business strategy"}
+              {video ? `Discussing: ${video.title}` : "Press Enter to send, Shift+Enter for new line"}
             </p>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Powered by Claude 4 Sonnet</span>
+              <span>Powered by Claude 4</span>
             </div>
           </div>
         </div>
