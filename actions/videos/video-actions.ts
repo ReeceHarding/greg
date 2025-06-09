@@ -4,15 +4,10 @@ import { ActionState } from "@/types"
 import { db, collections } from "@/db/db"
 import { FirebaseVideo } from "@/types/firebase-types"
 
-// Re-export the import functions from the dedicated import file
-export { importChannelVideosAction, checkForNewVideosAction } from "./import-channel-videos"
-
-// Re-export transcript extraction functions
-export { 
-  extractVideoTranscriptAction, 
-  extractAllMissingTranscriptsAction,
-  updateVideoTranscriptAction 
-} from "./extract-transcripts"
+// Note: In "use server" files, only async functions can be exported directly.
+// Import these functions directly from their source files when needed:
+// - importChannelVideosAction, checkForNewVideosAction from "./import-channel-videos"
+// - extractVideoTranscriptAction, extractAllMissingTranscriptsAction, updateVideoTranscriptAction from "./extract-transcripts"
 
 // Get all videos from the database
 export async function getVideosAction(): Promise<ActionState<FirebaseVideo[]>> {

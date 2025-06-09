@@ -191,7 +191,7 @@ function calculateDueDate(weekNumber: number): Date {
 }
 
 // Main seed function
-async function seedAssignments() {
+export async function seedAssignments() {
   console.log("[Seed Assignments] Starting assignment seeding...")
   
   let successCount = 0
@@ -228,13 +228,13 @@ async function seedAssignments() {
   console.log("[Seed Assignments] Seeding complete!")
   console.log(`[Seed Assignments] Success: ${successCount}, Errors: ${errorCount}`)
   
-  if (errorCount > 0) {
-    process.exit(1)
-  }
+  return { successCount, errorCount }
 }
 
-// Run the seed function
-seedAssignments().catch((error) => {
-  console.error("[Seed Assignments] Fatal error:", error)
-  process.exit(1)
-}) 
+// Run the seed function if called directly
+if (require.main === module) {
+  seedAssignments().catch((error) => {
+    console.error("[Seed Assignments] Fatal error:", error)
+    process.exit(1)
+  })
+} 

@@ -2,74 +2,81 @@
 
 import { auth } from "@/lib/firebase-auth"
 import { redirect } from "next/navigation"
+import { getAllAssignmentsAction } from "@/actions/db/assignments-actions"
+import { getSubmissionsByStudentAction } from "@/actions/db/submissions-actions"
+import Link from "next/link"
 
 export default async function AssignmentsPage() {
   console.log("[AssignmentsPage] Checking authentication")
   const user = await auth()
   
-  if (!user) {
+  if (!user || !user.userId) {
     console.log("[AssignmentsPage] No authenticated user, redirecting to login")
     redirect("/login")
   }
 
   console.log("[AssignmentsPage] Rendering assignments page for user:", user.userId)
+  
+  // Fetch real assignments from database
+  const assignmentsResult = await getAllAssignmentsAction()
+  const assignments = assignmentsResult.isSuccess ? assignmentsResult.data || [] : []
+  
+  // Fetch user's submissions
+  const submissionsResult = await getSubmissionsByStudentAction(user.userId)
+  const submissions = submissionsResult.isSuccess ? submissionsResult.data || [] : []
+  
+  console.log(`[AssignmentsPage] Fetched ${assignments.length} assignments and ${submissions.length} submissions`)
 
-  const weeks = [
-    { 
-      id: "day1", 
-      title: "Day 1", 
-      theme: "Finding Your Niche", 
-      status: "completed",
-      description: "Discover your unique value proposition and target market",
-      dueIn: "Completed",
-      progress: 100
-    },
-    { 
-      id: "week1", 
-      title: "Week 1", 
-      theme: "Building an Audience", 
-      status: "in-progress",
-      description: "Learn to attract and engage your first 1000 followers",
-      dueIn: "Due in 3 days",
-      progress: 60
-    },
-    { 
-      id: "week2", 
-      title: "Week 2", 
-      theme: "Vibe Code MVP", 
-      status: "not-started",
-      description: "Build your minimum viable product in record time",
-      dueIn: "Due in 10 days",
-      progress: 0
-    },
-    { 
-      id: "week3-4", 
-      title: "Week 3-4", 
-      theme: "MVP Iteration", 
-      status: "locked",
-      description: "Refine your product based on user feedback",
-      dueIn: "Unlocks in 2 weeks",
-      progress: 0
-    },
-    { 
-      id: "week5-6", 
-      title: "Week 5-6", 
-      theme: "Marketing & Automation", 
-      status: "locked",
-      description: "Scale your reach with AI-powered marketing",
-      dueIn: "Unlocks in 4 weeks",
-      progress: 0
-    },
-    { 
-      id: "week7-8", 
-      title: "Week 7-8", 
-      theme: "Monetization", 
-      status: "locked",
-      description: "Turn your audience into paying customers",
-      dueIn: "Unlocks in 6 weeks",
-      progress: 0
-    },
-  ]
+  // Map assignments to week format with submission status
+  const weeks = assignments.map(assignment => {
+    const submission = submissions.find(s => s.assignmentId === assignment.assignmentId)
+    
+    // Calculate status
+    let status: "completed" | "in-progress" | "not-started" = "not-started"
+    let progress = 0
+    
+    if (submission) {
+      if (submission.status === "approved" || submission.status === "submitted") {
+        status = "completed"
+        progress = 100
+      } else if (submission.status === "in_progress") {
+        status = "in-progress"
+        progress = 50
+      }
+    }
+    
+    // Calculate due date info
+    const dueDate = assignment.dueDate ? 
+      (assignment.dueDate as any).toDate?.() || new Date(assignment.dueDate as any) : 
+      new Date()
+    const now = new Date()
+    const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    
+    let dueIn = ""
+    if (status === "completed") {
+      dueIn = "Completed"
+    } else if (daysUntilDue < 0) {
+      dueIn = "Past due"
+    } else if (daysUntilDue === 0) {
+      dueIn = "Due today"
+    } else if (daysUntilDue === 1) {
+      dueIn = "Due tomorrow"
+    } else {
+      dueIn = `Due in ${daysUntilDue} days`
+    }
+    
+    return {
+      id: `week${assignment.weekNumber}`,
+      title: `Week ${assignment.weekNumber}`,
+      theme: assignment.theme,
+      status,
+      description: assignment.description,
+      dueIn,
+      progress,
+      assignmentId: assignment.assignmentId,
+      weekNumber: assignment.weekNumber
+    }
+  })
 
   return (
     <div className="min-h-screen bg-white">
@@ -118,22 +125,14 @@ export default async function AssignmentsPage() {
                       ? "bg-accent text-accent-foreground shadow-[0_4px_20px_rgba(34,197,94,0.3)]" 
                       : week.status === "in-progress"
                       ? "bg-primary text-primary-foreground shadow-[0_4px_20px_rgba(59,130,246,0.3)]"
-                      : week.status === "locked"
-                      ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
                       : "bg-white border border-border hover:border-primary/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
                     }
                   `}
-                  disabled={week.status === "locked"}
                 >
                   <span className="flex items-center gap-2">
                     {week.status === "completed" && (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                    {week.status === "locked" && (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
                     )}
                     {week.title}
@@ -145,16 +144,16 @@ export default async function AssignmentsPage() {
 
           {/* Assignment Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {weeks.map((week) => (
+            {weeks.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground mb-4">No assignments available yet.</p>
+                <p className="text-sm text-muted-foreground">Check back soon for your weekly assignments!</p>
+              </div>
+            ) : (
+              weeks.map((week) => (
               <div
                 key={week.id}
-                className={`
-                  group relative bg-white/80 backdrop-blur-sm rounded-3xl border transition-all duration-300
-                  ${week.status === "locked"
-                    ? "border-border/40 opacity-60"
-                    : "border-border/40 hover:border-primary/30 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.02]"
-                  }
-                `}
+                className="group relative bg-white/80 backdrop-blur-sm rounded-3xl border transition-all duration-300 border-border/40 hover:border-primary/30 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.02]"
               >
                 {/* Status Badge */}
                 {week.status === "completed" && (
@@ -211,25 +210,22 @@ export default async function AssignmentsPage() {
                   </div>
 
                   {/* Action Button */}
-                  <button
+                  <Link
+                    href={`/dashboard/assignments/${week.weekNumber}`}
                     className={`
-                      w-full py-4 px-6 rounded-2xl font-medium transition-all duration-200
-                      ${week.status === "locked"
-                        ? "bg-muted text-muted-foreground cursor-not-allowed"
-                        : week.status === "completed"
+                      block w-full py-4 px-6 rounded-2xl font-medium transition-all duration-200 text-center
+                      ${week.status === "completed"
                         ? "bg-accent/10 text-accent hover:bg-accent/20"
                         : week.status === "in-progress"
                         ? "bg-gradient-to-r from-primary to-primary/90 text-white hover:from-primary/90 hover:to-primary/80 shadow-[0_10px_40px_rgba(59,130,246,0.3)] hover:shadow-[0_15px_50px_rgba(59,130,246,0.4)] transform hover:-translate-y-0.5"
                         : "bg-white border border-primary text-primary hover:bg-primary hover:text-white"
                       }
                     `}
-                    disabled={week.status === "locked"}
                   >
-                    {week.status === "locked" && "Locked - Complete Previous Weeks"}
                     {week.status === "not-started" && "Start Assignment"}
                     {week.status === "in-progress" && "Continue Assignment"}
                     {week.status === "completed" && "View Submission"}
-                  </button>
+                  </Link>
 
                   {/* Additional Actions for Active Assignments */}
                   {(week.status === "in-progress" || week.status === "not-started") && (
@@ -244,7 +240,8 @@ export default async function AssignmentsPage() {
                   )}
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Help Section */}

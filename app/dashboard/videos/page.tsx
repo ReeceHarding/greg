@@ -3,6 +3,8 @@
 import { Suspense } from "react"
 import { auth } from "@/lib/firebase-auth"
 import { redirect } from "next/navigation"
+import { getVideosAction } from "@/actions/videos/video-actions"
+import Link from "next/link"
 
 export default async function VideosPage() {
   console.log("[VideosPage] Checking authentication")
@@ -14,6 +16,12 @@ export default async function VideosPage() {
   }
 
   console.log("[VideosPage] Rendering videos page for user:", user.userId)
+  
+  // Fetch real videos from database
+  const videosResult = await getVideosAction()
+  const videos = videosResult.isSuccess ? videosResult.data || [] : []
+  
+  console.log(`[VideosPage] Fetched ${videos.length} videos from database`)
 
   return (
     <div className="min-h-screen bg-white">
@@ -78,19 +86,47 @@ export default async function VideosPage() {
 
           {/* Video Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Placeholder for videos - will be populated in Phase 3 */}
-            {[
-              { title: "How to Find Your First 100 Customers", duration: "24:18", views: "15.2K", daysAgo: 2 },
-              { title: "Building in Public: The Ultimate Growth Hack", duration: "18:45", views: "12.8K", daysAgo: 4 },
-              { title: "The $10K/Month AI Business Blueprint", duration: "32:10", views: "28.5K", daysAgo: 5 },
-              { title: "From Idea to Launch in 14 Days", duration: "21:35", views: "9.7K", daysAgo: 7 },
-              { title: "Pricing Strategies That Convert", duration: "19:22", views: "11.3K", daysAgo: 9 },
-              { title: "Automating Your Business with AI", duration: "27:48", views: "16.9K", daysAgo: 11 },
-            ].map((video, i) => (
-              <div
-                key={i}
-                className="group relative bg-white/80 backdrop-blur-sm rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-border/40 hover:border-primary/30 transition-all duration-300 overflow-hidden hover:scale-[1.02]"
-              >
+            {videos.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground mb-4">No videos available yet.</p>
+                <button
+                  onClick={async () => {
+                    const response = await fetch('/api/youtube/import', { method: 'POST' })
+                    if (response.ok) window.location.reload()
+                  }}
+                  className="px-6 py-3 bg-primary text-white rounded-2xl font-medium hover:bg-primary/90 transition-all duration-200"
+                >
+                  Import Videos from YouTube
+                </button>
+              </div>
+            ) : (
+              videos.map((video) => {
+                // Calculate days ago
+                const publishedDate = video.publishedAt ? 
+                  (video.publishedAt as any).toDate?.() || new Date(video.publishedAt as any) : 
+                  new Date()
+                const daysAgo = Math.floor((new Date().getTime() - publishedDate.getTime()) / (1000 * 60 * 60 * 24))
+                
+                // Format duration
+                const formatDuration = (seconds: number) => {
+                  const minutes = Math.floor(seconds / 60)
+                  const secs = seconds % 60
+                  return `${minutes}:${secs.toString().padStart(2, '0')}`
+                }
+                
+                // Format view count
+                const formatViews = (count: number) => {
+                  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
+                  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`
+                  return count.toString()
+                }
+                
+                return (
+                  <Link
+                    key={video.videoId}
+                    href={`/dashboard/videos/${video.videoId}`}
+                    className="group relative bg-white/80 backdrop-blur-sm rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-border/40 hover:border-primary/30 transition-all duration-300 overflow-hidden hover:scale-[1.02] block"
+                  >
                 {/* Video Thumbnail */}
                 <div className="relative aspect-video bg-gradient-to-br from-muted to-muted/80 overflow-hidden">
                   {/* Play Button Overlay */}
@@ -104,11 +140,11 @@ export default async function VideosPage() {
                   
                   {/* Duration Badge */}
                   <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-xs font-medium rounded-md">
-                    {video.duration}
+                    {formatDuration(video.duration)}
                   </div>
 
                   {/* New Badge (for recent videos) */}
-                  {video.daysAgo <= 3 && (
+                  {daysAgo <= 3 && (
                     <div className="absolute top-3 left-3 px-3 py-1 bg-accent text-accent-foreground text-xs font-semibold rounded-full shadow-md">
                       NEW
                     </div>
@@ -129,20 +165,22 @@ export default async function VideosPage() {
                       <span>Greg Isenberg</span>
                     </div>
                     <span>•</span>
-                    <span>{video.daysAgo} days ago</span>
+                    <span>{daysAgo} days ago</span>
                   </div>
 
                   <div className="mt-4 flex items-center justify-between">
                     <span className="text-sm font-medium text-muted-foreground">
-                      {video.views} views
+                      {formatViews(video.viewCount)} views
                     </span>
-                    <button className="text-sm font-medium text-primary hover:text-primary/80 transition-colors duration-200">
+                    <span className="text-sm font-medium text-primary hover:text-primary/80 transition-colors duration-200">
                       Watch Now →
-                    </button>
+                    </span>
                   </div>
                 </div>
-              </div>
-            ))}
+              </Link>
+                )
+              })
+            )}
           </div>
 
           {/* Load More */}
