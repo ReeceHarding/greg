@@ -4,7 +4,7 @@ import { db, collections } from "@/db/db"
 import { FirebaseVideo, TranscriptChunk } from "@/types/firebase-types"
 import { ActionState } from "@/types"
 import { FieldValue } from 'firebase-admin/firestore'
-import { Innertube } from 'youtubei.js'
+import { getTranscript, TranscriptItem } from 'youtube-transcript-api'
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY
 const API_BASE_URL = "https://www.googleapis.com/youtube/v3"
@@ -63,87 +63,73 @@ async function getCaptionTracks(videoId: string): Promise<CaptionTrack[]> {
   }
 }
 
-// Extract transcript using youtubei.js
-async function extractTranscriptUsingYouTubei(videoId: string): Promise<{ text: string; chunks: TranscriptChunk[] } | null> {
+// Extract transcript using youtube-transcript-api package
+async function extractTranscriptUsingAPI(videoId: string): Promise<{ text: string; chunks: TranscriptChunk[] } | null> {
   try {
-    console.log(`[Transcript Extract] Extracting transcript using youtubei.js for: ${videoId}`)
+    console.log(`[Transcript Extract] Extracting transcript using youtube-transcript-api for: ${videoId}`)
     
-    // Create YouTube client
-    const youtube = await Innertube.create()
+    // Fetch transcript using the package
+    const transcriptItems = await getTranscript(videoId)
     
-    // Get video info
-    const info = await youtube.getInfo(videoId)
-    
-    // Get transcript
-    const transcriptData = await info.getTranscript()
-    
-    if (!transcriptData) {
-      console.log(`[Transcript Extract] No transcript found for video: ${videoId}`)
+    if (!transcriptItems || transcriptItems.length === 0) {
+      console.log(`[Transcript Extract] No transcript items found for video: ${videoId}`)
       return null
     }
     
-    // Get transcript segments from the transcript data
-    const segments = transcriptData.transcript?.content?.body?.initial_segments || []
-    
-    if (segments.length === 0) {
-      console.log(`[Transcript Extract] No transcript segments found for video: ${videoId}`)
-      return null
-    }
-    
-    // Combine all transcript segments into full text
-    const fullText = segments.map((segment: any) => segment.snippet?.text || '').join(' ')
-    
-    // Create chunks with timing information
+    // Process transcript items into chunks
     const chunks: TranscriptChunk[] = []
     let currentChunk = ''
     let chunkStartTime = 0
     let chunkIndex = 0
-    let currentSegmentIndex = 0
     
-    for (const segment of segments) {
-      const text = (segment.snippet?.text || '').trim()
-      const startMs = parseInt(segment.start_ms || '0')
-      const startSeconds = startMs / 1000
+    for (const item of transcriptItems) {
+      const text = item.text.trim()
+      const startTime = item.start / 1000 // Convert to seconds
+      const duration = item.duration / 1000 // Convert to seconds
+      const endTime = startTime + duration
       
       // If adding this text would exceed chunk size, save current chunk
       if (currentChunk.length + text.length > CHUNK_SIZE && currentChunk.length > 0) {
-        const previousSegment = segments[currentSegmentIndex - 1]
-        const endMs = previousSegment ? parseInt(previousSegment.end_ms || previousSegment.start_ms || '0') : startMs
-        
         chunks.push({
           chunkId: `${videoId}_chunk_${chunkIndex}`,
           text: currentChunk.trim(),
           startTime: chunkStartTime,
-          endTime: endMs / 1000,
+          endTime: startTime,
         })
         
         // Start new chunk with overlap
         const overlapText = currentChunk.split(' ').slice(-10).join(' ') // Last 10 words
         currentChunk = overlapText + ' ' + text
-        chunkStartTime = startSeconds
+        chunkStartTime = startTime
         chunkIndex++
       } else {
         if (currentChunk.length === 0) {
-          chunkStartTime = startSeconds
+          chunkStartTime = startTime
         }
         currentChunk += (currentChunk.length > 0 ? ' ' : '') + text
       }
-      
-      currentSegmentIndex++
     }
     
     // Don't forget the last chunk
     if (currentChunk.trim().length > 0) {
-      const lastSegment = segments[segments.length - 1]
-      const endMs = parseInt(lastSegment.end_ms || lastSegment.start_ms || '0')
+      const lastItem = transcriptItems[transcriptItems.length - 1]
+      const endTime = (lastItem.start + lastItem.duration) / 1000
       
       chunks.push({
         chunkId: `${videoId}_chunk_${chunkIndex}`,
         text: currentChunk.trim(),
         startTime: chunkStartTime,
-        endTime: endMs / 1000,
+        endTime: endTime,
       })
     }
+    
+    // Combine all text for the full transcript
+    const fullText = transcriptItems
+      .map((item: TranscriptItem) => item.text)
+      .join(' ')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width characters
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .trim()
     
     console.log(`[Transcript Extract] Successfully extracted ${fullText.length} characters in ${chunks.length} chunks`)
     
@@ -153,15 +139,15 @@ async function extractTranscriptUsingYouTubei(videoId: string): Promise<{ text: 
     }
     
   } catch (error: any) {
-    console.error(`[Transcript Extract] Error extracting transcript:`, error)
+    console.error(`[Transcript Extract] Error extracting transcript with API:`, error.message || error)
     
     // Handle specific error cases
-    if (error.message?.includes('not available') || error.message?.includes('Transcript')) {
+    if (error.message?.includes('Transcript is disabled') || error.message?.includes('not found')) {
       console.log(`[Transcript Extract] No transcript available for video: ${videoId}`)
       return null
     }
     
-    throw error
+    return null
   }
 }
 
@@ -169,8 +155,8 @@ async function extractTranscriptUsingYouTubei(videoId: string): Promise<{ text: 
 // This function attempts to extract transcript using YouTube's oEmbed API and page scraping as a fallback
 async function extractTranscriptAlternative(videoId: string): Promise<{ text: string; chunks: TranscriptChunk[] } | null> {
   try {
-    // First try using youtubei.js
-    const transcriptData = await extractTranscriptUsingYouTubei(videoId)
+    // First try using the direct approach
+    const transcriptData = await extractTranscriptUsingAPI(videoId)
     
     if (transcriptData) {
       return transcriptData
