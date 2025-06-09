@@ -11,18 +11,20 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   console.log("[AdminLayout] Checking admin authentication")
-  const user = await auth()
+  const authResult = await auth()
   
-  if (!user) {
+  if (!authResult.user) {
     console.log("[AdminLayout] No authenticated user, redirecting to login")
     redirect("/login")
   }
 
-  // Check if user is admin (will be implemented in Phase 2)
-  // For now, we'll allow access but show a placeholder message
-  const isAdmin = false // Placeholder - will check custom claims in Phase 2
+  // Check if user is admin
+  if (authResult.role !== "admin") {
+    console.log("[AdminLayout] User is not an admin, redirecting to dashboard")
+    redirect("/dashboard")
+  }
 
-  console.log("[AdminLayout] Rendering admin layout for user:", user.userId)
+  console.log("[AdminLayout] Rendering admin layout for admin user:", authResult.userId)
 
   return (
     <div className="flex h-screen bg-background">
@@ -36,15 +38,6 @@ export default async function AdminLayout({
         
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto">
-          {!isAdmin && (
-            <div className="mx-auto max-w-4xl p-6">
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-6">
-                <p className="text-destructive font-medium">
-                  Admin access will be enabled in Phase 2 with proper role-based authentication.
-                </p>
-              </div>
-            </div>
-          )}
           {children}
         </main>
       </div>

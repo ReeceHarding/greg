@@ -21,14 +21,20 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   console.log("[DashboardLayout] Checking authentication")
-  const user = await auth()
+  const authResult = await auth()
   
-  if (!user) {
+  if (!authResult.user) {
     console.log("[DashboardLayout] No authenticated user, redirecting to login")
     redirect("/login")
   }
 
-  console.log("[DashboardLayout] Rendering dashboard layout for user:", user.userId)
+  // Redirect admin users to admin panel
+  if (authResult.role === "admin") {
+    console.log("[DashboardLayout] Admin user detected, redirecting to admin panel")
+    redirect("/admin")
+  }
+
+  console.log("[DashboardLayout] Rendering dashboard layout for student:", authResult.userId)
 
   return (
     <SidebarProvider>

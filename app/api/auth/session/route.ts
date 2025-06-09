@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { adminAuth } from "@/lib/firebase-config"
 import { createSessionCookie } from "@/lib/firebase-auth"
 import { createProfileAction } from "@/actions/db/profiles-actions"
+import { isAdminEmailAction } from "@/actions/admin/admin-role-actions"
 
 export async function POST(request: NextRequest) {
   console.log("[Session API] POST request received")
@@ -41,6 +42,26 @@ export async function POST(request: NextRequest) {
     console.log("[Session API] Token verified successfully!")
     console.log("[Session API] User UID:", decodedToken.uid)
     console.log("[Session API] User email:", decodedToken.email)
+
+    // Check if user is an admin
+    const userEmail = decodedToken.email || ""
+    const adminCheckResult = await isAdminEmailAction(userEmail)
+    const isAdmin = adminCheckResult.isSuccess && adminCheckResult.data === true
+    
+    console.log("[Session API] Is user admin?", isAdmin)
+
+    // Set custom claims based on admin status
+    if (isAdmin) {
+      console.log("[Session API] Setting admin custom claim for user")
+      await adminAuth.setCustomUserClaims(decodedToken.uid, {
+        role: "admin"
+      })
+    } else {
+      console.log("[Session API] Setting student custom claim for user")
+      await adminAuth.setCustomUserClaims(decodedToken.uid, {
+        role: "student"
+      })
+    }
 
     // Create session cookie
     const sessionCookie = await createSessionCookie(idToken)

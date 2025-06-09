@@ -2,8 +2,13 @@ import { cookies } from "next/headers"
 import { adminAuth } from "./firebase-config"
 import { DecodedIdToken } from "firebase-admin/auth"
 
+// Extended type to include custom claims
+export interface AuthUser extends DecodedIdToken {
+  role?: "admin" | "student"
+}
+
 // Helper to get current user from session cookie
-export async function getCurrentUser(): Promise<DecodedIdToken | null> {
+export async function getCurrentUser(): Promise<AuthUser | null> {
   console.log("[Firebase Auth] Getting current user from session...")
 
   // Check if adminAuth is available
@@ -35,7 +40,13 @@ export async function getCurrentUser(): Promise<DecodedIdToken | null> {
       decodedClaims.uid
     )
 
-    return decodedClaims
+    // Include custom claims
+    const user: AuthUser = {
+      ...decodedClaims,
+      role: decodedClaims.role as "admin" | "student" | undefined
+    }
+
+    return user
   } catch (error) {
     console.error("[Firebase Auth] Error verifying session:", error)
     return null
@@ -99,6 +110,7 @@ export async function auth() {
   return {
     userId: user?.uid || null,
     user: user,
-    sessionClaims: user || null
+    sessionClaims: user || null,
+    role: user?.role || "student"
   }
 }
