@@ -188,20 +188,20 @@
 - [x] **Chat Interface UI** (`/dashboard/chat`) - Already completed with beautiful UI
 
 #### Backend Implementation
-- [ ] **Connect Claude API**:
+- [x] **Connect Claude API**:
   1. Implement `/api/claude/chat` endpoint
   2. Use Claude 4 Sonnet with the configured API key
   3. Build prompts with video context when available
   4. Store chat history in `chats` collection
   5. Handle streaming responses for better UX
 
-- [ ] **Pinecone Integration**:
+- [x] **Pinecone Integration**:
   - Initialize Pinecone with configured API key
   - When importing videos, generate embeddings for transcript chunks
   - Store embeddings with metadata: videoId, startTime, endTime
   - For queries, find relevant chunks and include in Claude context
 
-- [ ] **Video Context Integration**:
+- [x] **Video Context Integration**:
   - Pass videoId from video detail page to chat
   - Fetch relevant transcript chunks from Pinecone
   - Parse Claude responses for timestamp references
@@ -210,12 +210,12 @@
 ### Student Progress AI Analysis
 
 #### Backend Implementation
-- [ ] **Progress Tracking**:
+- [x] **Progress Tracking**:
   - Create/update documents in `progress` collection
   - Track video watch time, assignment completions
   - Calculate overall completion percentage
 
-- [ ] **AI Progress Analysis**:
+- [x] **AI Progress Analysis**:
   1. Gather student's data from `progress` collection
   2. Create Claude prompt with student journey context
   3. Generate personalized insights and recommendations
@@ -225,7 +225,7 @@
 ### AI-Powered Assignment Feedback
 
 #### Backend Implementation
-- [ ] **Feedback Generation**:
+- [x] **Feedback Generation**:
   1. Triggered when assignment submitted
   2. Compile submission data from `submissions` collection
   3. Create detailed Claude prompt with rubric
@@ -446,3 +446,5 @@
 ## Phase 7: Landing Page
 
 - create a landing page that speaks straight to student to tell them that 
+- have section instead of testimonials it'll be twitter posts of young entrepnreneurs who made bank 
+here are some to start with. use the twitter aio to pull int he into and show the info (name, etc)
