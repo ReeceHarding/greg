@@ -1,5 +1,11 @@
-import { db } from "../db/db"
-import { FieldValue } from "firebase-admin/firestore"
+import * as dotenv from 'dotenv'
+import path from 'path'
+import { initializeApp, cert, getApps } from 'firebase-admin/app'
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'
+import * as fs from 'fs'
+
+// Load environment variables first
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 // Script to add the first admin email to the system
 async function addFirstAdmin() {
@@ -11,12 +17,35 @@ async function addFirstAdmin() {
     process.exit(1)
   }
 
-  if (!db) {
-    console.error("❌ Firebase is not initialized. Please check your configuration.")
-    process.exit(1)
-  }
-
   try {
+    // Initialize Firebase Admin directly
+    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
+    
+    if (!serviceAccountPath) {
+      console.error("❌ FIREBASE_SERVICE_ACCOUNT_PATH not set in environment")
+      process.exit(1)
+    }
+
+    if (!fs.existsSync(serviceAccountPath)) {
+      console.error("❌ Service account file not found at:", serviceAccountPath)
+      process.exit(1)
+    }
+
+    console.log("🔧 Initializing Firebase Admin SDK...")
+    
+    // Check if app already exists
+    let app
+    if (getApps().length === 0) {
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'))
+      app = initializeApp({
+        credential: cert(serviceAccount)
+      })
+    } else {
+      app = getApps()[0]
+    }
+
+    const db = getFirestore(app)
+    
     console.log(`Adding ${adminEmail} as admin...`)
 
     // Add to adminEmails collection
