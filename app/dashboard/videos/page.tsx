@@ -5,6 +5,7 @@ import { auth } from "@/lib/firebase-auth"
 import { redirect } from "next/navigation"
 import { getVideosAction } from "@/actions/videos/video-actions"
 import Link from "next/link"
+import ImportVideosButton from "./_components/import-videos-button"
 
 export default async function VideosPage() {
   console.log("[VideosPage] Checking authentication")
@@ -89,15 +90,7 @@ export default async function VideosPage() {
             {videos.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <p className="text-muted-foreground mb-4">No videos available yet.</p>
-                <button
-                  onClick={async () => {
-                    const response = await fetch('/api/youtube/import', { method: 'POST' })
-                    if (response.ok) window.location.reload()
-                  }}
-                  className="px-6 py-3 bg-primary text-white rounded-2xl font-medium hover:bg-primary/90 transition-all duration-200"
-                >
-                  Import Videos from YouTube
-                </button>
+                <ImportVideosButton />
               </div>
             ) : (
               videos.map((video) => {
