@@ -19,13 +19,24 @@ if (adminDb) {
 // Export the Firestore instance (may be null if Firebase is not configured)
 export const db = adminDb
 
-// Collection references
+// Collection references for AI Summer Camp Platform
 export const collections = {
-  profiles: "profiles",
+  // Core collections
   users: "users",
-  todos: "todos",
+  videos: "videos",
+  assignments: "assignments",
+  submissions: "submissions",
   chats: "chats",
-  messages: "messages"
+  liveSessions: "liveSessions",
+  progress: "progress",
+  certificates: "certificates",
+  adminLogs: "adminLogs",
+  forumPosts: "forumPosts",
+  
+  // Legacy collections (to be removed)
+  profiles: "profiles", // migrated to users collection
+  todos: "todos", // not used in AI Summer Camp
+  messages: "messages" // migrated to chats collection
 }
 
 console.log("[DB] Available collections:", Object.keys(collections))
