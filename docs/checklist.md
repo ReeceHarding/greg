@@ -191,3 +191,12 @@ All 7 phases have been successfully implemented:
 - Browser notifications for new content
 - Export functionality for progress reports
 - Integration with calendar apps for session scheduling
+
+### Recent Updates
+
+**Chatbot-Pinecone Integration Enhanced** (Completed)
+- [x] Connected chatbot with Pinecone for video/timestamp retrieval
+- [x] Implemented clickable timestamps in chat responses that navigate to specific video moments
+- [x] Added support for searching across all videos when no specific video context is provided
+- [x] Enhanced system prompts to include timestamp ranges and better context from video transcripts
+- [x] Fixed streaming response parsing to properly handle Claude API format
