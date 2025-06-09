@@ -13,7 +13,8 @@ const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 }
 
 console.log("[Firebase Client] Initializing Firebase with config:", {
@@ -35,18 +36,30 @@ console.log("[Firebase Client] Firestore service initialized")
 export const storage = getStorage(app)
 console.log("[Firebase Client] Storage service initialized")
 
-// Initialize Analytics (only in browser)
-if (typeof window !== "undefined") {
-  isSupported().then(supported => {
-    if (supported) {
-      const analytics = getAnalytics(app)
-      console.log("[Firebase Client] Analytics initialized")
-    } else {
-      console.log(
-        "[Firebase Client] Analytics not supported in this environment"
-      )
-    }
-  })
+// Initialize Analytics (only in browser and with valid config)
+let analytics = null
+if (typeof window !== "undefined" && firebaseConfig.measurementId) {
+  isSupported()
+    .then(supported => {
+      if (supported) {
+        try {
+          analytics = getAnalytics(app)
+          console.log("[Firebase Client] Analytics initialized successfully")
+        } catch (error) {
+          console.log("[Firebase Client] Analytics initialization error:", error)
+          // Continue without analytics if there's an error
+        }
+      } else {
+        console.log(
+          "[Firebase Client] Analytics not supported in this environment"
+        )
+      }
+    })
+    .catch(error => {
+      console.log("[Firebase Client] Error checking analytics support:", error)
+    })
+} else if (typeof window !== "undefined") {
+  console.log("[Firebase Client] Analytics measurement ID not configured")
 }
 
 // Connect to emulators if in development
@@ -70,4 +83,5 @@ if (
   }
 }
 
+export { analytics }
 export default app
