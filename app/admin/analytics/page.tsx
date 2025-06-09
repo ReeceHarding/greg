@@ -36,9 +36,10 @@ export default async function AdminAnalyticsPage() {
   // Calculate key metrics
   const totalStudents = allProfiles.length
   const activeStudents = allProgress.filter(p => {
-    const lastActive = p.lastCalculatedAt
+    const lastActive = p.lastCalculatedAt as any
     if (!lastActive) return false
-    const daysSinceActive = Math.floor((Date.now() - new Date((lastActive as any).seconds * 1000).getTime()) / (1000 * 60 * 60 * 24))
+    const lastActiveDate = lastActive instanceof Date ? lastActive : new Date(lastActive)
+    const daysSinceActive = Math.floor((Date.now() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24))
     return daysSinceActive <= 7
   }).length
   
@@ -72,19 +73,24 @@ export default async function AdminAnalyticsPage() {
   // Get at-risk students (no activity in 5+ days or low completion)
   const atRiskStudents = allProgress
     .filter(p => {
-      const lastActive = p.lastCalculatedAt
+      const lastActive = p.lastCalculatedAt as any
       if (!lastActive) return true
-      const daysSinceActive = Math.floor((Date.now() - new Date((lastActive as any).seconds * 1000).getTime()) / (1000 * 60 * 60 * 24))
+      const lastActiveDate = lastActive instanceof Date ? lastActive : new Date(lastActive)
+      const daysSinceActive = Math.floor((Date.now() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24))
       return daysSinceActive >= 5 || p.overallCompletionPercentage < 25
     })
     .map(p => {
       const profile = allProfiles.find(prof => prof.userId === p.studentId)
+      const lastActive = p.lastCalculatedAt as any
+      const lastActiveDate = lastActive 
+        ? (lastActive instanceof Date ? lastActive : new Date(lastActive))
+        : null
       return {
         studentId: p.studentId,
         name: profile?.displayName || profile?.email || "Unknown",
         email: profile?.email || "",
         completionRate: p.overallCompletionPercentage,
-        lastActive: p.lastCalculatedAt ? new Date((p.lastCalculatedAt as any).seconds * 1000).toISOString() : null,
+        lastActive: lastActiveDate ? lastActiveDate.toISOString() : null,
         currentWeek: p.currentWeek
       }
     })

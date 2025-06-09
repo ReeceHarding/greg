@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/firebase-auth"
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 import AdminSidebar from "@/components/sidebar/admin-sidebar"
 import AdminTopBar from "@/components/sidebar/admin-top-bar"
 
@@ -21,6 +22,19 @@ export default async function AdminLayout({
   // Check if user is admin
   if (!authResult.user.customClaims || authResult.user.customClaims.role !== "admin") {
     console.log("[AdminLayout] User is not an admin, redirecting to dashboard")
+    redirect("/dashboard")
+  }
+  
+  // Check view mode preference
+  console.log("[AdminLayout] User is admin, checking view mode preference")
+  const cookieStore = await cookies()
+  const viewModeCookie = cookieStore.get("viewMode")
+  const viewMode = viewModeCookie?.value || "admin"
+  
+  console.log("[AdminLayout] View mode from cookie:", viewMode)
+  
+  if (viewMode === "student") {
+    console.log("[AdminLayout] Student view mode selected, redirecting to dashboard")
     redirect("/dashboard")
   }
 

@@ -36,7 +36,13 @@ export default async function LeaderboardPage() {
         currentStreak: progress.currentStreak || 0,
         assignmentsCompleted: progress.assignmentsCompleted.length,
         badges: progress.badges || [],
-        lastActiveAt: progress.lastCalculatedAt ? progress.lastCalculatedAt.toDate().toISOString() : null
+        lastActiveAt: progress.lastCalculatedAt 
+          ? (progress.lastCalculatedAt instanceof Date 
+            ? progress.lastCalculatedAt.toISOString() 
+            : typeof progress.lastCalculatedAt === 'string' 
+              ? progress.lastCalculatedAt 
+              : null)
+          : null
       }
     })
   )

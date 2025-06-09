@@ -5,6 +5,28 @@ import { ActionState } from "@/types"
 import { FirebaseProgress, VideoWatchRecord, WeeklyReport } from "@/types/firebase-types"
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 
+// Helper function to serialize FirebaseProgress
+function serializeProgress(progress: FirebaseProgress): FirebaseProgress {
+  return {
+    ...progress,
+    forumStats: {
+      ...progress.forumStats,
+      lastActiveAt: progress.forumStats.lastActiveAt instanceof Timestamp 
+        ? (progress.forumStats.lastActiveAt as Timestamp).toDate() 
+        : progress.forumStats.lastActiveAt as any
+    },
+    weeklyReports: progress.weeklyReports.map(report => ({
+      ...report,
+      generatedAt: report.generatedAt instanceof Timestamp 
+        ? (report.generatedAt as Timestamp).toDate() 
+        : report.generatedAt as any
+    })),
+    lastCalculatedAt: progress.lastCalculatedAt instanceof Timestamp 
+      ? (progress.lastCalculatedAt as Timestamp).toDate() 
+      : progress.lastCalculatedAt as any
+  }
+}
+
 // Create or update progress document
 export async function updateProgressAction(
   studentId: string,
@@ -107,10 +129,13 @@ export async function updateProgressAction(
     
     console.log(`[Progress Actions] Progress updated successfully`)
     
+    // Serialize the progress to convert timestamps
+    const serializedProgress = serializeProgress(updatedProgress)
+    
     return {
       isSuccess: true,
       message: "Progress updated successfully",
-      data: updatedProgress
+      data: serializedProgress
     }
   } catch (error) {
     console.error("[Progress Actions] Error updating progress:", error)
@@ -210,10 +235,13 @@ export async function getStudentProgressAction(
     
     console.log(`[Progress Actions] Retrieved progress successfully`)
     
+    // Serialize the progress to convert timestamps
+    const serializedProgress = serializeProgress(progress)
+    
     return {
       isSuccess: true,
       message: "Progress retrieved successfully",
-      data: progress
+      data: serializedProgress
     }
   } catch (error) {
     console.error("[Progress Actions] Error getting progress:", error)
@@ -348,12 +376,15 @@ export async function getAllProgressAction(): Promise<ActionState<FirebaseProgre
       studentId: doc.id 
     } as FirebaseProgress))
     
+    // Serialize all progress records to convert timestamps
+    const serializedProgress = allProgress.map(progress => serializeProgress(progress))
+    
     console.log(`[Progress Actions] Retrieved ${allProgress.length} progress records`)
     
     return {
       isSuccess: true,
       message: "All progress records retrieved successfully",
-      data: allProgress
+      data: serializedProgress
     }
   } catch (error) {
     console.error("[Progress Actions] Error getting all progress:", error)

@@ -61,8 +61,15 @@ export function NavUser() {
         })
         setIsAdmin(userIsAdmin)
         
-        // Load view mode preference
-        const savedViewMode = localStorage.getItem("viewMode")
+        // Load view mode preference from cookie
+        const getCookieValue = (name: string) => {
+          const value = `; ${document.cookie}`
+          const parts = value.split(`; ${name}=`)
+          if (parts.length === 2) return parts.pop()?.split(';').shift()
+          return null
+        }
+        
+        const savedViewMode = getCookieValue("viewMode")
         if (savedViewMode === "admin" && userIsAdmin) {
           setViewMode("admin")
         }
@@ -92,7 +99,9 @@ export function NavUser() {
     console.log("[NavUser] Quick switching view mode")
     const newMode = viewMode === "student" ? "admin" : "student"
     setViewMode(newMode)
-    localStorage.setItem("viewMode", newMode)
+    
+    // Set cookie instead of localStorage
+    document.cookie = `viewMode=${newMode}; path=/; max-age=${60 * 60 * 24 * 30}` // 30 days
     
     // Redirect based on new mode
     if (newMode === "admin") {
@@ -100,6 +109,7 @@ export function NavUser() {
     } else {
       router.push("/dashboard")
     }
+    router.refresh() // Force refresh to apply the new view mode
   }
 
   if (!user) {

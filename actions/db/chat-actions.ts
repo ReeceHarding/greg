@@ -15,10 +15,14 @@ export async function createChatMessageAction(
     videoId?: string
   }
 ): Promise<ActionState<ChatMessage>> {
+  // Validate input
+  if (!data || !data.chatId || !data.userId || !data.content) {
+    return { isSuccess: false, message: "Missing required fields" }
+  }
+  
   console.log(`[Chat Actions] Creating message for chat: ${data.chatId}`)
   
   if (!db) {
-    console.error("[Chat Actions] Database not initialized")
     return { isSuccess: false, message: "Database not initialized" }
   }
   
@@ -74,8 +78,10 @@ export async function createChatMessageAction(
       data: messageData
     }
   } catch (error) {
-    console.error("[Chat Actions] Error creating message:", error)
-    return { isSuccess: false, message: "Failed to create message" }
+    // Don't log the full error object to avoid Next.js serialization issues
+    const errorMessage = error instanceof Error ? error.message : "Failed to create message"
+    console.log("[Chat Actions] Error creating message:", errorMessage)
+    return { isSuccess: false, message: errorMessage }
   }
 }
 
@@ -126,10 +132,14 @@ export async function getChatHistoryAction(
 export async function getUserChatsAction(
   userId: string
 ): Promise<ActionState<FirebaseChat[]>> {
+  // Validate input
+  if (!userId) {
+    return { isSuccess: false, message: "User ID is required" }
+  }
+  
   console.log(`[Chat Actions] Getting chats for user: ${userId}`)
   
   if (!db) {
-    console.error("[Chat Actions] Database not initialized")
     return { isSuccess: false, message: "Database not initialized" }
   }
   
@@ -152,8 +162,10 @@ export async function getUserChatsAction(
       data: chats
     }
   } catch (error) {
-    console.error("[Chat Actions] Error getting user chats:", error)
-    return { isSuccess: false, message: "Failed to get chats" }
+    // Don't log the full error object to avoid Next.js serialization issues
+    const errorMessage = error instanceof Error ? error.message : "Failed to get chats"
+    console.log("[Chat Actions] Error getting user chats:", errorMessage)
+    return { isSuccess: false, message: errorMessage }
   }
 }
 

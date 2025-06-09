@@ -52,31 +52,38 @@ export default function ChatClient({ userId }: ChatClientProps) {
   useEffect(() => {
     async function loadChatHistory() {
       console.log("[ChatClient] Loading chat history for user:", userId)
-      const result = await getUserChatsAction(userId)
       
-      if (result.isSuccess && result.data.length > 0) {
-        console.log("[ChatClient] Found", result.data.length, "chats")
-        // Get the most recent chat that's not video-specific
-        const recentChat = result.data.find(chat => chat.type === "progress_assistant")
+      try {
+        const result = await getUserChatsAction(userId)
         
-        if (recentChat && recentChat.messages.length > 0) {
-          console.log("[ChatClient] Loading recent chat with", recentChat.messages.length, "messages")
-          setChatId(recentChat.chatId)
+        if (result.isSuccess && result.data && result.data.length > 0) {
+          console.log("[ChatClient] Found", result.data.length, "chats")
+          // Get the most recent chat that's not video-specific
+          const recentChat = result.data.find(chat => chat.type === "progress_assistant")
           
-          // Convert chat messages to UI format
-          const loadedMessages: Message[] = recentChat.messages.map((msg, index) => ({
-            id: `msg-${index}`,
-            role: msg.role as "user" | "assistant",
-            content: msg.content,
-            timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date()
-          }))
-          
-          setMessages(loadedMessages)
+          if (recentChat && recentChat.messages && recentChat.messages.length > 0) {
+            console.log("[ChatClient] Loading recent chat with", recentChat.messages.length, "messages")
+            setChatId(recentChat.chatId)
+            
+            // Convert chat messages to UI format
+            const loadedMessages: Message[] = recentChat.messages.map((msg, index) => ({
+              id: `msg-${index}`,
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+              timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date()
+            }))
+            
+            setMessages(loadedMessages)
+          }
         }
+      } catch (error) {
+        console.error("[ChatClient] Error loading chat history:", error)
       }
     }
     
-    loadChatHistory()
+    if (userId) {
+      loadChatHistory()
+    }
   }, [userId])
   
   // Auto-resize textarea

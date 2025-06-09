@@ -8,6 +8,7 @@ This is the layout for the dashboard pages. It includes auth protection.
 
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/firebase-auth"
+import { cookies } from "next/headers"
 import { AppSidebar } from "@/components/sidebar/app-sidebar"
 import {
   SidebarInset,
@@ -27,7 +28,24 @@ export default async function DashboardLayout({
     console.log("[DashboardLayout] No authenticated user, redirecting to login")
     redirect("/login")
   }
-
+  
+  // Check if user is admin and has admin view mode selected
+  if (authResult.user.customClaims?.role === "admin") {
+    console.log("[DashboardLayout] User is admin, checking view mode preference")
+    
+    // Check cookies for view mode preference
+    const cookieStore = await cookies()
+    const viewModeCookie = cookieStore.get("viewMode")
+    const viewMode = viewModeCookie?.value || "student"
+    
+    console.log("[DashboardLayout] View mode from cookie:", viewMode)
+    
+    if (viewMode === "admin") {
+      console.log("[DashboardLayout] Admin view mode selected, redirecting to admin")
+      redirect("/admin")
+    }
+  }
+  
   console.log("[DashboardLayout] Rendering dashboard layout for user:", authResult.userId)
 
   return (

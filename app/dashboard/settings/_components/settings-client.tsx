@@ -26,21 +26,30 @@ export default function SettingsClient({ userId, profile, isAdmin }: SettingsCli
   
   console.log("[SettingsClient] Rendering with isAdmin:", isAdmin)
   
-  // Load view mode from localStorage on mount
+  // Load view mode from cookie on mount
   useEffect(() => {
-    const savedViewMode = localStorage.getItem("viewMode")
+    const getCookieValue = (name: string) => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop()?.split(';').shift()
+      return null
+    }
+    
+    const savedViewMode = getCookieValue("viewMode")
     if (savedViewMode === "admin" && isAdmin) {
       setViewMode("admin")
     }
   }, [isAdmin])
   
   // Handle view mode change
-  const handleViewModeChange = (checked: boolean) => {
+  const handleViewModeChange = async (checked: boolean) => {
     const newMode = checked ? "admin" : "student"
     console.log("[SettingsClient] Changing view mode to:", newMode)
     
     setViewMode(newMode)
-    localStorage.setItem("viewMode", newMode)
+    
+    // Set cookie instead of localStorage
+    document.cookie = `viewMode=${newMode}; path=/; max-age=${60 * 60 * 24 * 30}` // 30 days
     
     // Show toast notification
     toast({
@@ -55,6 +64,7 @@ export default function SettingsClient({ userId, profile, isAdmin }: SettingsCli
       } else {
         router.push("/dashboard")
       }
+      router.refresh() // Force refresh to apply the new view mode
     }, 1000)
   }
   

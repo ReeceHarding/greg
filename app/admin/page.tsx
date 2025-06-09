@@ -52,10 +52,10 @@ export default async function AdminDashboard() {
   const activeStudentIds = new Set(
     progress
       .filter(p => {
-        const lastActive = p.lastCalculatedAt instanceof Date ? p.lastCalculatedAt : 
-                          (p.lastCalculatedAt as any)?.toDate ? (p.lastCalculatedAt as any).toDate() :
-                          new Date(0)
-        return lastActive > oneWeekAgo
+        const lastActive = p.lastCalculatedAt as any
+        if (!lastActive) return false
+        const lastActiveDate = lastActive instanceof Date ? lastActive : new Date(lastActive)
+        return lastActiveDate > oneWeekAgo
       })
       .map(p => p.studentId)
   )
@@ -74,9 +74,9 @@ export default async function AdminDashboard() {
   const recentSubmissions = submissions
     .sort((a, b) => {
       const dateA = a.submittedAt instanceof Date ? a.submittedAt : 
-                    (a.submittedAt as any)?.toDate ? (a.submittedAt as any).toDate() : new Date(0)
+                    typeof a.submittedAt === 'string' ? new Date(a.submittedAt) : new Date(0)
       const dateB = b.submittedAt instanceof Date ? b.submittedAt : 
-                    (b.submittedAt as any)?.toDate ? (b.submittedAt as any).toDate() : new Date(0)
+                    typeof b.submittedAt === 'string' ? new Date(b.submittedAt) : new Date(0)
       return dateB.getTime() - dateA.getTime()
     })
     .slice(0, 5)
@@ -86,10 +86,10 @@ export default async function AdminDashboard() {
   const atRiskCount = students.length - Array.from(activeStudentIds).filter(id => {
     const studentProgress = progress.find(p => p.studentId === id)
     if (!studentProgress) return false
-    const lastActive = studentProgress.lastCalculatedAt instanceof Date ? studentProgress.lastCalculatedAt : 
-                      (studentProgress.lastCalculatedAt as any)?.toDate ? (studentProgress.lastCalculatedAt as any).toDate() :
-                      new Date(0)
-    return lastActive > fiveDaysAgo
+    const lastActive = studentProgress.lastCalculatedAt as any
+    if (!lastActive) return false
+    const lastActiveDate = lastActive instanceof Date ? lastActive : new Date(lastActive)
+    return lastActiveDate > fiveDaysAgo
   }).length
 
   return (
@@ -226,7 +226,7 @@ export default async function AdminDashboard() {
                 recentSubmissions.map((submission) => {
                   const student = profiles.find(p => p.userId === submission.studentId)
                   const submittedAt = submission.submittedAt instanceof Date ? submission.submittedAt : 
-                                    (submission.submittedAt as any)?.toDate ? (submission.submittedAt as any).toDate() : 
+                                    typeof submission.submittedAt === 'string' ? new Date(submission.submittedAt) : 
                                     new Date()
                   
                   return (
