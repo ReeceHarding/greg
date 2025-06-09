@@ -65,68 +65,26 @@
 
 ---
 
-## Phase 2: Authentication Layer (Depends on: Core Platform)
+## Phase 2: Authentication Enhancement (Depends on: Core Platform) ✅
 
-### Student Authentication System
+### Current Working System
+- **Google OAuth Flow**: Working perfectly - users sign in with Google and are redirected to dashboard
+- **Session Management**: Session cookies are created and managed properly
+- **Database Creation**: User profiles are automatically created on first sign-in
+- **Middleware Protection**: All protected routes redirect to login when not authenticated
 
-#### Frontend Implementation
-- [x] **Login Page Design** (`/login`)
-  - **Layout**: Centered card (400px wide) on gradient background
-  - **Components**: 
-    - Logo at top center
-    - "Welcome to AI Summer Camp" heading
-    - "Sign in with Google" button (full width, Google brand colors)
-    - Small text: "By signing in, you agree to our Terms of Service"
-    - Link to contact for support
-  - **Interactions**: 
-    - Button shows loading spinner when clicked
-    - Redirects to `/dashboard` on success
-    - Shows error toast for failures
-
-- [x] **User Profile Component**
-  - **Location**: Top right of authenticated layouts
-  - **Display**: User photo (40px circle), name, dropdown arrow
-  - **Dropdown menu**: Profile, Settings, Sign Out
-  - **Data source**: Pull from Firebase Auth current user
-
-#### Backend Implementation
-- [x] **Google OAuth Configuration**
-  - Enable Google provider in Firebase Console
-  - Add authorized domains: localhost, production domain
-  - Configure OAuth consent screen with app name and logo
-  - Set required scopes: email, profile
-
-- [x] **Session Management Flow**
-  1. User clicks "Sign in with Google"
-  2. Firebase Auth handles OAuth flow
-  3. On success, get ID token from Firebase Auth
-  4. Send token to `/api/auth/session`
-  5. Server creates session cookie (14 days expiry)
-  6. Create/update user document in Firestore
-  7. Set default role as "student"
-  8. Update lastActiveAt timestamp
-
-- [x] **Middleware Protection**
-  - Check session cookie on all `/dashboard/*` routes
-  - Verify cookie with Firebase Admin SDK
-  - Redirect to `/login` if invalid/missing
-  - Pass user data to protected pages
-
+### Only Missing Feature
 - [ ] **Admin Role Assignment**
-  - Create Firebase Function to set custom claims
+  - Create Firebase Cloud Function to set custom claims
   - Only allow specific email addresses (stored in Firestore `adminEmails` collection)
   - Admin emails bypass student role assignment
   - Add "admin" custom claim to user token
+  - Create simple UI in admin panel to add/remove admin emails
 
-#### Expected Functionality After Phase 2:
-- **What you should see**: Working Google sign-in flow
-- **Test by**: 
-  - Sign in with Google account
-  - Verify redirect to dashboard
-  - Check user info displays correctly
-  - Sign out and verify redirect to home
-- **Session persistence**: Close browser, reopen, still logged in
-- **Security test**: Try accessing `/dashboard` without login (should redirect)
+#### Expected Functionality After Phase 2 Enhancement:
+- **What you should see**: Same auth flow but admin users see admin sidebar
+- **Test by**: Add your email to adminEmails collection, sign out and back in
+- **Verify**: Admin users can access /admin routes
 
 ---
 
@@ -135,44 +93,16 @@
 ### Video Learning System
 
 #### Frontend Implementation
-- [x] **Videos Page** (`/dashboard/videos`)
-  - **Header Section**:
-    - Page title: "Video Library"
-    - Search bar (600px wide) with icon
-    - Filter dropdown: "All Videos", "This Week's Topic", "By Module"
-  
-  - **Video Grid**:
-    - Responsive grid: 1 column mobile, 2 tablet, 3 desktop
-    - Video cards (16:9 aspect ratio):
-      - YouTube thumbnail image
-      - Video title (2 lines max, truncate)
-      - Channel name and publish date
-      - Duration badge in corner
-      - View count
-    - Hover effect: Slight scale and shadow
-    - Click opens video detail page
-
-- [ ] **Video Detail Page** (`/dashboard/videos/[videoId]`)
-  - **Layout**: Two-column on desktop, stacked on mobile
-  - **Left Column (8/12 width)**:
-    - YouTube iframe embed (16:9 aspect ratio, responsive)
-    - Video title as H1
-    - Description (expandable if long)
-    - "Ask AI Assistant" button (opens chat)
-  
-  - **Right Column (4/12 width)**:
-    - "Related Videos" section
-    - List of 5 videos from same week/topic
-    - Mini cards with thumbnail and title
+- [x] **Videos Page UI** (`/dashboard/videos`) - Already completed with beautiful UI
 
 #### Backend Implementation
 - [ ] **YouTube Data Import**
   - **Initial Import Function** (`actions/videos/import-channel-videos.ts`):
-    1. Use YouTube Data API v3
+    1. Use YouTube Data API v3 with the configured API key
     2. Get channel ID from Greg Isenberg's channel URL
     3. Fetch all video IDs from channel (pagination required)
     4. For each video, fetch: title, description, thumbnail, duration, publishedAt
-    5. Store in Firestore `videos` collection
+    5. Store in Firestore `videos` collection (already defined in db.ts)
     6. Set up daily Cloud Function to check for new videos
 
   - **Transcript Extraction** (`actions/videos/extract-transcripts.ts`):
@@ -183,128 +113,70 @@
     5. Create transcript chunks (1000 chars each) with timestamps
     6. Store chunks in subcollection for search
 
+- [ ] **Video Detail Page** (`/dashboard/videos/[videoId]`)
+  - Create dynamic route for individual videos
+  - YouTube iframe embed with responsive design
+  - Show video details from Firestore
+  - "Ask AI Assistant" button that opens chat with video context
+
 ### Assignment System
 
 #### Frontend Implementation
-- [x] **Assignments Dashboard** (`/dashboard/assignments`)
-  - **Week Navigation**:
-    - Horizontal scrollable tabs: "Day 1", "Week 1", "Week 2-3", etc.
-    - Current week highlighted with accent color
-    - Lock icon on future weeks
-  
-  - **Assignment Card** (for each week):
-    - Week title and theme as heading
-    - Progress bar showing completion status
-    - Due date with countdown if upcoming
-    - Status badge: "Not Started", "In Progress", "Submitted", "Approved"
-    - "Start Assignment" or "Continue" button
-    - Thumbnail image representing the week's theme
-
-- [ ] **Assignment Detail Page** (`/dashboard/assignments/[weekId]`)
-  - **Header**:
-    - Week title and number
-    - Due date prominently displayed
-    - Status indicator
-  
-  - **Requirements Section**:
-    - Clear bullet points of what to submit
-    - Example submissions (if available)
-    - Resources and recommended tools
-  
-  - **Submission Form**:
-    - Video URL input with validation (YouTube/Loom)
-    - GitHub repository URL (optional)
-    - Reflection textarea (500 word limit, show count)
-    - File upload zone (drag & drop)
-    - "Save Draft" and "Submit for Review" buttons
+- [x] **Assignments Dashboard UI** (`/dashboard/assignments`) - Already completed with beautiful UI
 
 #### Backend Implementation
-- [ ] **Assignment Data Structure**:
-  - Predefined assignments for all 8 weeks
-  - Store in Firestore with: weekNumber, title, description, requirements, dueDate
-  - Calculate due dates based on student's start date
-  - Track submission status per student
+- [ ] **Assignment Data Population**:
+  - Create seed script to populate `assignments` collection with 8 weeks of content
+  - Each assignment includes: weekNumber, title, description, requirements, theme
+  - Calculate due dates dynamically based on student's join date
+
+- [ ] **Assignment Detail Page** (`/dashboard/assignments/[weekId]`)
+  - Create dynamic route for each assignment
+  - Show requirements and resources
+  - Build submission form with file upload
+  - Connect to submission workflow
 
 - [ ] **Submission Workflow**:
-  1. Student fills form and clicks submit
-  2. Validate all required fields
-  3. Create submission document with studentId, assignmentId, timestamp
-  4. Upload files to Firebase Storage: `/submissions/{userId}/{assignmentId}/`
-  5. Update submission status to "submitted"
-  6. Trigger AI feedback generation (async)
-  7. Send email notification to admin
+  1. Create submission document in `submissions` collection
+  2. Validate video URLs (YouTube/Loom)
+  3. Upload files to Firebase Storage: `/submissions/{userId}/{assignmentId}/`
+  4. Update submission status and progress tracking
+  5. Trigger AI feedback generation (Phase 4)
 
 ### Student Onboarding Flow
 
-#### Frontend Implementation
-- [ ] **Onboarding Modal** (shows on first dashboard visit)
-  - **Step 1: Welcome**
-    - "Welcome to AI Summer Camp!" heading
-    - Brief explanation of the program
-    - "Let's get you set up" button
-  
-  - **Step 2: Tool Setup Checklist**
-    - Cursor AI Editor: checkbox, link to download, "10 min setup"
-    - n8n Account: checkbox, link to signup, "5 min setup"
-    - Domain Setup: checkbox, link to guide, "15 min setup"
-    - Each item expands to show mini-guide
-  
-  - **Step 3: Confirm Timezone**
-    - Auto-detect timezone
-    - Dropdown to change if needed
-    - Explain why this matters (live sessions)
-  
-  - **Progress Bar**: Shows across all steps
-  - **Skip Option**: "Complete this later" link
-
-#### Backend Implementation
-- [ ] **Onboarding Tracking**:
-  - Update user document `onboardingStatus` object
-  - Store completion timestamp when all done
-  - Track which tools are set up
-  - Show onboarding reminder if incomplete after 3 days
+#### Implementation
+- [ ] **Onboarding Modal**
+  - Check user's `onboardingStatus` from database
+  - Show modal on first dashboard visit if not completed
+  - Track completion of each tool setup
+  - Update user document when all steps complete
 
 ### Live Sessions System
 
-#### Frontend Implementation
+#### Implementation
 - [ ] **Sessions Page** (`/dashboard/sessions`)
-  - **Embedded Google Calendar**:
-    - Full-width iframe of shared calendar
-    - Height: 600px on desktop, 400px mobile
-    - Show month view by default
-  
-  - **Upcoming Sessions List** (below calendar):
-    - Next 3 sessions as cards
-    - Each card shows: date, time, topic, guest speaker
-    - "Add to Calendar" and "Get Zoom Link" buttons
-    - Countdown timer for next session
+  - Create new page with Google Calendar embed
+  - Below calendar, show upcoming sessions from `liveSessions` collection
+  - Add "Get Zoom Link" functionality
+  - RSVP tracking in database
 
-- [ ] **Session Registration**:
-  - Click on session opens modal
-  - Shows full session details
-  - RSVP button (toggle attending/not attending)
-  - On RSVP, store in Firestore and send confirmation email
-
-#### Backend Implementation
 - [ ] **Session Management**:
-  - Store sessions in Firestore with: date, time, topic, zoomLink, description
-  - Admin manually creates sessions
-  - Track RSVPs in subcollection
-  - Cloud Function sends reminder emails 24 hours and 1 hour before
-  - After session, admin adds recording link
+  - Admin interface to create sessions in `liveSessions` collection
+  - Store Zoom links securely (only visible to registered students)
+  - Track RSVPs and attendance
 
 #### Expected Functionality After Phase 3:
 - **What you should see**: 
-  - Full video library with YouTube embeds
-  - Assignment system with forms
-  - Working onboarding flow
-  - Calendar with sessions
+  - Videos populated from YouTube
+  - Working assignment submission system
+  - Onboarding flow for new users
+  - Live sessions with calendar
 - **Test by**:
-  - Import videos from YouTube (check they appear)
+  - Run video import script
   - Submit a test assignment
-  - Complete onboarding checklist
+  - Complete onboarding flow
   - RSVP for a session
-- **Data verification**: Check Firestore has all documents created correctly
 
 ---
 
@@ -313,115 +185,63 @@
 ### AI Chatbot for Video Learning
 
 #### Frontend Implementation
-- [x] **Chat Interface** (`/dashboard/chat` or embedded in video page)
-  - **Layout**: 
-    - Full height container (calc(100vh - header))
-    - Messages area with virtual scrolling
-    - Input area fixed at bottom
-  
-  - **Message Display**:
-    - User messages: Right aligned, primary color background
-    - AI messages: Left aligned, gray background
-    - Typing indicator: Three bouncing dots
-    - Timestamp on hover
-    - Code blocks with syntax highlighting
-    - Video timestamp links styled as buttons
-  
-  - **Input Area**:
-    - Textarea that grows (max 4 lines)
-    - Send button (disabled while AI responding)
-    - Character limit: 1000
-    - "Analyzing video context..." status when processing
-
-- [ ] **Video Context Integration**:
-  - When opened from video page, show video title at top
-  - "Ask about this video" placeholder text
-  - Quick action buttons: "Summarize", "Key Points", "Find Timestamp"
+- [x] **Chat Interface UI** (`/dashboard/chat`) - Already completed with beautiful UI
 
 #### Backend Implementation
-- [ ] **Chat Message Flow**:
-  1. User sends message with videoId context
-  2. Fetch video transcript from Firestore
-  3. Use Pinecone to find relevant transcript chunks
-  4. Build Claude prompt with: system instructions, video context, chat history, user question
-  5. Call Claude API with 100k token context
-  6. Parse response for timestamp references (format: [MM:SS])
-  7. Convert timestamps to clickable YouTube links
-  8. Store message and response in Firestore chat history
-  9. Return formatted response to frontend
+- [ ] **Connect Claude API**:
+  1. Implement `/api/claude/chat` endpoint
+  2. Use Claude 4 Sonnet with the configured API key
+  3. Build prompts with video context when available
+  4. Store chat history in `chats` collection
+  5. Handle streaming responses for better UX
 
 - [ ] **Pinecone Integration**:
+  - Initialize Pinecone with configured API key
   - When importing videos, generate embeddings for transcript chunks
-  - Use OpenAI text-embedding-3-small model
-  - Store embeddings in Pinecone with metadata: videoId, startTime, endTime
-  - For queries, embed user question and find top 5 relevant chunks
-  - Include surrounding context for better answers
+  - Store embeddings with metadata: videoId, startTime, endTime
+  - For queries, find relevant chunks and include in Claude context
+
+- [ ] **Video Context Integration**:
+  - Pass videoId from video detail page to chat
+  - Fetch relevant transcript chunks from Pinecone
+  - Parse Claude responses for timestamp references
+  - Convert timestamps to clickable YouTube deeplinks
 
 ### Student Progress AI Analysis
 
-#### Frontend Implementation
-- [x] **AI Insights Dashboard** (`/dashboard/progress`)
-  - **Weekly Progress Card**:
-    - AI-generated summary of week's progress
-    - Strengths highlighted in green
-    - Areas for improvement in amber
-    - Personalized encouragement message
-    - "Refresh Insights" button (rate limited)
-  
-  - **Recommended Videos Section**:
-    - "Based on your progress, watch these videos"
-    - 3 video cards with AI explanation of why recommended
-    - Direct links to videos
-  
-  - **Peer Matching** (if enabled):
-    - "Students working on similar projects"
-    - Profile cards with match reason
-    - "Connect" button to send introduction
-
 #### Backend Implementation
-- [ ] **Progress Analysis Function**:
-  1. Gather student's submission history
-  2. Compile assignment reflections and feedback
-  3. Create Claude prompt with student journey context
-  4. Request analysis focusing on: strengths, improvements, next steps
-  5. Cache analysis for 24 hours to avoid excessive API calls
-  6. Store insights in Firestore for history tracking
+- [ ] **Progress Tracking**:
+  - Create/update documents in `progress` collection
+  - Track video watch time, assignment completions
+  - Calculate overall completion percentage
 
-- [ ] **Video Recommendation Engine**:
-  1. Based on student's current assignment and struggles
-  2. Use Claude to analyze which videos would help most
-  3. Cross-reference with video metadata and transcripts
-  4. Return top 3 recommendations with explanations
+- [ ] **AI Progress Analysis**:
+  1. Gather student's data from `progress` collection
+  2. Create Claude prompt with student journey context
+  3. Generate personalized insights and recommendations
+  4. Cache analysis for 24 hours to manage API costs
+  5. Display in the already-built progress UI
 
 ### AI-Powered Assignment Feedback
 
 #### Backend Implementation
-- [ ] **Feedback Generation Flow**:
+- [ ] **Feedback Generation**:
   1. Triggered when assignment submitted
-  2. Compile submission data: video URL, reflection, any code
-  3. For video submissions: extract key points from description
-  4. For code submissions: analyze GitHub repo structure
-  5. Create detailed Claude prompt with rubric criteria
-  6. Generate feedback with specific structure:
-     - Overall impression (encouraging tone)
-     - 3 specific strengths with examples
-     - 3 areas for improvement with actionable steps
-     - Resources or videos that could help
-     - Score from 1-10 with justification
-  7. Store feedback in submission document
-  8. Notify student that feedback is ready
+  2. Compile submission data from `submissions` collection
+  3. Create detailed Claude prompt with rubric
+  4. Generate structured feedback (strengths, improvements, score)
+  5. Store in submission document's `aiFeedback` field
+  6. Display in student's assignment view
 
 #### Expected Functionality After Phase 4:
 - **What you should see**:
-  - Working AI chat that understands video content
-  - Intelligent responses with timestamp links
+  - Working AI chat with video context
   - AI-generated assignment feedback
   - Personalized progress insights
 - **Test by**:
   - Ask chatbot about specific video content
-  - Submit assignment and wait for AI feedback
+  - Submit assignment and receive AI feedback
   - Check progress page for AI insights
-- **Quality check**: AI responses should be contextual, not generic
 
 ---
 
