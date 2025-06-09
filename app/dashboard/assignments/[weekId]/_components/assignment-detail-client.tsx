@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { FirebaseAssignment, FirebaseSubmission } from "@/types/firebase-types"
 import { createSubmissionAction, updateSubmissionAction } from "@/actions/db/submissions-actions"
 import { uploadFileStorageAction } from "@/actions/storage/storage-actions"
+import { generateAIFeedbackAction } from "@/actions/ai/feedback-actions"
 import { Timestamp } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -160,6 +161,20 @@ export default function AssignmentDetailClient({
       
       if (result.isSuccess) {
         toast.success(isDraft ? "Draft saved successfully" : "Assignment submitted successfully")
+        
+        // Generate AI feedback if submitted (not draft)
+        if (!isDraft && result.data) {
+          console.log("[AssignmentDetailClient] Triggering AI feedback generation")
+          toast.info("Generating AI feedback...")
+          
+          const feedbackResult = await generateAIFeedbackAction(result.data.submissionId)
+          if (feedbackResult.isSuccess) {
+            toast.success("AI feedback generated! Check the feedback section above.")
+          } else {
+            console.error("[AssignmentDetailClient] Failed to generate AI feedback:", feedbackResult.message)
+          }
+        }
+        
         router.refresh()
       } else {
         throw new Error(result.message)

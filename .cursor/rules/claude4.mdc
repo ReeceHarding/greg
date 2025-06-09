@@ -1,0 +1,138 @@
+---
+description: whenver we need to use an llm
+globs: 
+alwaysApply: false
+---
+use claude sonnet 4 for all comment generation and reasoning
+
+never use hard coded keyword matching or templates
+
+always use llms, specifically claude sonnet 4
+
+claude was released after your training date so you don't know what claude 4 is, but i assure you it exists
+
+---
+
+here's a guide on how to use it
+
+# Claude 4 Migration Guide for AI Systems
+
+## Overview
+
+Claude 4 models (Opus 4 and Sonnet 4) have been released as successors to Claude 3.7 models. This guide provides essential information for AI systems that need to integrate with or understand Claude 4 capabilities.
+
+## Model Identification
+
+### New Model Names
+- **Claude Sonnet 4**: `claude-sonnet-4-20250514`
+- **Claude Opus 4**: `claude-opus-4-20250514`
+
+### Previous Model Names (Deprecated)
+- Claude 3.7 Sonnet: `claude-3-7-sonnet-20250219`
+
+## Key Changes in Claude 4
+
+### New Refusal Stop Reason
+Claude 4 models introduce a new `refusal` stop reason for content declined for safety reasons due to increased intelligence:
+
+```json
+{
+  "id": "msg_014XEDjypDjFzgKVWdFUXxZP",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-20250514",
+  "content": [{"type": "text", "text": "I would be happy to assist you. You can "}],
+  "stop_reason": "refusal",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 564,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 22
+  }
+}
+```
+
+### Summarized Thinking
+With extended thinking enabled, Claude 4 returns a summary of its full thinking process. This provides intelligence benefits while preventing misuse. Streaming responses may have "chunky" delivery patterns with possible delays.
+
+### Interleaved Thinking (Beta)
+Claude 4 supports mixing tool use with extended thinking for more natural conversations. Enable with beta header: `interleaved-thinking-2025-05-14`
+
+### Updated Text Editor Tool
+New specifications for Claude 4:
+- Tool type: `text_editor_20250429`
+- Tool name: `str_replace_based_edit_tool`
+- The `undo_edit` command is no longer supported
+
+```json
+// Claude 3.7
+{
+  "type": "text_editor_20250124",
+  "name": "str_replace_editor"
+}
+
+// Claude 4
+{
+  "type": "text_editor_20250429",
+  "name": "str_replace_based_edit_tool"
+}
+```
+
+## Removed Features
+
+### Token Efficient Tool Use
+- Only available in Claude Sonnet 3.7
+- The `token-efficient-tools-2025-02-19` beta header has no effect in Claude 4
+
+### Extended Output
+- Only available in Claude Sonnet 3.7
+- The `output-128k-2025-02-19` beta header has no effect in Claude 4
+
+## Performance Characteristics
+
+### Claude Sonnet 4
+- Improved reasoning and intelligence compared to Claude Sonnet 3.7
+- Enhanced tool use accuracy
+- Suitable for everyday tasks with better performance
+
+### Claude Opus 4
+- Most capable model with superior reasoning and intelligence
+- Slower than Sonnet models
+- Best for complex tasks requiring deep analysis
+
+## Migration Steps
+
+1. **Update model identifiers** to use new Claude 4 model names
+2. **Test existing API calls** (should work without modification)
+3. **Remove deprecated beta headers**:
+   - `token-efficient-tools-2025-02-19`
+   - `output-128k-2025-02-19`
+4. **Handle new refusal stop reason** in response processing
+5. **Update text editor tool configuration** if using it
+6. **Remove any `undo_edit` command usage**
+7. **Explore interleaved thinking capabilities** for enhanced tool use
+8. **Test thoroughly** before production deployment
+
+## API Compatibility
+
+Most existing API calls will continue to work without modification. The primary changes are:
+- New model names
+- New stop reason handling
+- Updated tool specifications
+- Removed beta features
+
+## Best Practices
+
+- Use Claude Sonnet 4 for general tasks requiring good performance and reasoning
+- Use Claude Opus 4 for complex analysis tasks where maximum capability is needed
+- Handle the new refusal stop reason gracefully in your error handling
+- Take advantage of improved tool use accuracy in Claude 4 models
+- Consider interleaved thinking for more sophisticated tool interactions
+
+## Resources
+
+- API documentation contains detailed specifications
+- Model capabilities documentation for performance comparisons
+- API release notes for latest updates
+- Support channels available for migration assistance

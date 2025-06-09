@@ -96,7 +96,7 @@
 - [x] **Videos Page UI** (`/dashboard/videos`) - Already completed with beautiful UI
 
 #### Backend Implementation
-- [ ] **YouTube Data Import**
+- [x] **YouTube Data Import**
   - **Initial Import Function** (`actions/videos/import-channel-videos.ts`):
     1. Use YouTube Data API v3 with the configured API key
     2. Get channel ID from Greg Isenberg's channel URL
@@ -113,7 +113,7 @@
     5. Create transcript chunks (1000 chars each) with timestamps
     6. Store chunks in subcollection for search
 
-- [ ] **Video Detail Page** (`/dashboard/videos/[videoId]`)
+- [x] **Video Detail Page** (`/dashboard/videos/[videoId]`)
   - Create dynamic route for individual videos
   - YouTube iframe embed with responsive design
   - Show video details from Firestore
@@ -125,18 +125,18 @@
 - [x] **Assignments Dashboard UI** (`/dashboard/assignments`) - Already completed with beautiful UI
 
 #### Backend Implementation
-- [ ] **Assignment Data Population**:
+- [x] **Assignment Data Population**:
   - Create seed script to populate `assignments` collection with 8 weeks of content
   - Each assignment includes: weekNumber, title, description, requirements, theme
   - Calculate due dates dynamically based on student's join date
 
-- [ ] **Assignment Detail Page** (`/dashboard/assignments/[weekId]`)
+- [x] **Assignment Detail Page** (`/dashboard/assignments/[weekId]`)
   - Create dynamic route for each assignment
   - Show requirements and resources
   - Build submission form with file upload
   - Connect to submission workflow
 
-- [ ] **Submission Workflow**:
+- [x] **Submission Workflow**:
   1. Create submission document in `submissions` collection
   2. Validate video URLs (YouTube/Loom)
   3. Upload files to Firebase Storage: `/submissions/{userId}/{assignmentId}/`
@@ -146,7 +146,7 @@
 ### Student Onboarding Flow
 
 #### Implementation
-- [ ] **Onboarding Modal**
+- [x] **Onboarding Modal**
   - Check user's `onboardingStatus` from database
   - Show modal on first dashboard visit if not completed
   - Track completion of each tool setup
@@ -155,13 +155,13 @@
 ### Live Sessions System
 
 #### Implementation
-- [ ] **Sessions Page** (`/dashboard/sessions`)
+- [x] **Sessions Page** (`/dashboard/sessions`)
   - Create new page with Google Calendar embed
   - Below calendar, show upcoming sessions from `liveSessions` collection
   - Add "Get Zoom Link" functionality
   - RSVP tracking in database
 
-- [ ] **Session Management**:
+- [x] **Session Management**:
   - Admin interface to create sessions in `liveSessions` collection
   - Store Zoom links securely (only visible to registered students)
   - Track RSVPs and attendance
@@ -442,3 +442,7 @@
   - Check leaderboard updates
   - View analytics as admin
   - Generate and export reports
+
+## Phase 7: Landing Page
+
+- create a landing page that speaks straight to student to tell them that 
