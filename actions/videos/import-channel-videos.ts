@@ -245,6 +245,8 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
       return { isSuccess: false, message: "No videos found in channel" }
     }
     
+    console.log(`[YouTube Import] Found ${playlistItems.length} videos to process`)
+    
     // Extract video IDs
     const videoIds = playlistItems.map(item => item.snippet.resourceId.videoId)
     
@@ -253,87 +255,105 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
     
     let imported = 0
     let updated = 0
+    let errors = 0
     
     console.log("[YouTube Import] Processing videos...")
     
-    // Process each video
-    for (const item of playlistItems) {
-      try {
-        const videoId = item.snippet.resourceId.videoId
-        const details = videoDetails.get(videoId) || { duration: 0, viewCount: 0 }
-        
-        // Check if video already exists
-        const existingDoc = await db.collection(collections.videos).doc(videoId).get()
-        
-        const publishedDate = new Date(item.snippet.publishedAt)
-        
-        const videoData: Omit<FirebaseVideo, 'transcriptChunks' | 'transcript'> = {
-          videoId: videoId,
-          title: item.snippet.title,
-          description: item.snippet.description || '',
-          thumbnailUrl: item.snippet.thumbnails?.high?.url || 
-                       item.snippet.thumbnails?.medium?.url || 
-                       item.snippet.thumbnails?.default?.url || '',
-          duration: details.duration,
-          publishedAt: publishedDate as any,
-          channelId: item.snippet.channelId,
-          channelTitle: item.snippet.channelTitle,
-          tags: item.snippet.tags || [],
-          viewCount: details.viewCount,
-          importedAt: FieldValue.serverTimestamp() as any,
-          lastUpdatedAt: FieldValue.serverTimestamp() as any,
-        }
-        
-        if (existingDoc.exists) {
-          // Update existing video
-          const updateData = {
-            title: videoData.title,
-            description: videoData.description,
-            thumbnailUrl: videoData.thumbnailUrl,
-            duration: videoData.duration,
-            publishedAt: publishedDate,
-            channelId: videoData.channelId,
-            channelTitle: videoData.channelTitle,
-            tags: videoData.tags,
-            viewCount: videoData.viewCount,
-            lastUpdatedAt: FieldValue.serverTimestamp(),
+    // Process in smaller batches to avoid timeouts
+    const BATCH_SIZE = 10
+    for (let i = 0; i < playlistItems.length; i += BATCH_SIZE) {
+      const batch = playlistItems.slice(i, i + BATCH_SIZE)
+      console.log(`[YouTube Import] Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(playlistItems.length/BATCH_SIZE)}`)
+      
+      // Process batch items in parallel
+      const batchPromises = batch.map(async (item) => {
+        try {
+          const videoId = item.snippet.resourceId.videoId
+          const details = videoDetails.get(videoId) || { duration: 0, viewCount: 0 }
+          
+          // Check if video already exists
+          const existingDoc = await db!.collection(collections.videos).doc(videoId).get()
+          
+          const publishedDate = new Date(item.snippet.publishedAt)
+          
+          const videoData: Omit<FirebaseVideo, 'transcriptChunks' | 'transcript'> = {
+            videoId: videoId,
+            title: item.snippet.title,
+            description: item.snippet.description || '',
+            thumbnailUrl: item.snippet.thumbnails?.high?.url || 
+                         item.snippet.thumbnails?.medium?.url || 
+                         item.snippet.thumbnails?.default?.url || '',
+            duration: details.duration,
+            publishedAt: publishedDate as any,
+            channelId: item.snippet.channelId,
+            channelTitle: item.snippet.channelTitle,
+            tags: item.snippet.tags || [],
+            viewCount: details.viewCount,
+            importedAt: FieldValue.serverTimestamp() as any,
+            lastUpdatedAt: FieldValue.serverTimestamp() as any,
           }
-          await db.collection(collections.videos).doc(videoId).update(updateData)
-          updated++
-          console.log(`[YouTube Import] Updated video: ${item.snippet.title}`)
-        } else {
-          // Create new video
-          const createData = {
-            videoId: videoData.videoId,
-            title: videoData.title,
-            description: videoData.description,
-            thumbnailUrl: videoData.thumbnailUrl,
-            duration: videoData.duration,
-            publishedAt: publishedDate,
-            channelId: videoData.channelId,
-            channelTitle: videoData.channelTitle,
-            tags: videoData.tags,
-            viewCount: videoData.viewCount,
-            transcript: '', // Will be populated later
-            transcriptChunks: [], // Will be populated later
-            importedAt: FieldValue.serverTimestamp(),
-            lastUpdatedAt: FieldValue.serverTimestamp(),
+          
+          if (existingDoc.exists) {
+            // Update existing video
+            const updateData = {
+              title: videoData.title,
+              description: videoData.description,
+              thumbnailUrl: videoData.thumbnailUrl,
+              duration: videoData.duration,
+              publishedAt: publishedDate,
+              channelId: videoData.channelId,
+              channelTitle: videoData.channelTitle,
+              tags: videoData.tags,
+              viewCount: videoData.viewCount,
+              lastUpdatedAt: FieldValue.serverTimestamp(),
+            }
+            await db!.collection(collections.videos).doc(videoId).update(updateData)
+            updated++
+            console.log(`[YouTube Import] Updated: ${item.snippet.title.substring(0, 50)}...`)
+          } else {
+            // Create new video
+            const createData = {
+              videoId: videoData.videoId,
+              title: videoData.title,
+              description: videoData.description,
+              thumbnailUrl: videoData.thumbnailUrl,
+              duration: videoData.duration,
+              publishedAt: publishedDate,
+              channelId: videoData.channelId,
+              channelTitle: videoData.channelTitle,
+              tags: videoData.tags,
+              viewCount: videoData.viewCount,
+              transcript: '', // Will be populated later
+              transcriptChunks: [], // Will be populated later
+              importedAt: FieldValue.serverTimestamp(),
+              lastUpdatedAt: FieldValue.serverTimestamp(),
+            }
+            await db!.collection(collections.videos).doc(videoId).set(createData)
+            imported++
+            console.log(`[YouTube Import] Imported: ${item.snippet.title.substring(0, 50)}...`)
           }
-          await db.collection(collections.videos).doc(videoId).set(createData)
-          imported++
-          console.log(`[YouTube Import] Imported video: ${item.snippet.title}`)
+          
+        } catch (error) {
+          console.error(`[YouTube Import] Error processing video ${item.snippet.title}:`, error)
+          errors++
         }
-        
-      } catch (error) {
-        console.error(`[YouTube Import] Error processing video ${item.snippet.title}:`, error)
+      })
+      
+      // Wait for batch to complete
+      await Promise.all(batchPromises)
+      
+      // Add a small delay between batches to avoid rate limiting
+      if (i + BATCH_SIZE < playlistItems.length) {
+        console.log("[YouTube Import] Waiting 1 second before next batch...")
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
     }
     
-    console.log(`[YouTube Import] Import complete. Imported: ${imported}, Updated: ${updated}`)
+    console.log(`[YouTube Import] Import complete. Imported: ${imported}, Updated: ${updated}, Errors: ${errors}`)
     
     return {
       isSuccess: true,
-      message: `Successfully imported ${imported} new videos and updated ${updated} existing videos`,
+      message: `Successfully imported ${imported} new videos and updated ${updated} existing videos${errors > 0 ? ` (${errors} errors)` : ''}`,
       data: { imported, updated }
     }
     
