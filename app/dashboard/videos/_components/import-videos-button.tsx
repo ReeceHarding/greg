@@ -17,7 +17,10 @@ export default function ImportVideosButton() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          action: 'import'
+        })
       })
       
       const data = await response.json()

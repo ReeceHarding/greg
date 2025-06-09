@@ -10,6 +10,9 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY
 const CHANNEL_URL = "https://www.youtube.com/@GregIsenberg"
 const API_BASE_URL = "https://www.googleapis.com/youtube/v3"
 
+// Greg Isenberg's channel ID (from YouTube API)
+const GREG_CHANNEL_ID = "UCPjNBjflYl0-HQtUvOx0Ibw"
+
 // Extract channel handle from URL
 const CHANNEL_HANDLE = "GregIsenberg"
 
@@ -220,11 +223,9 @@ export async function importChannelVideosAction(): Promise<ActionState<{ importe
     
     console.log("[YouTube Import] Starting import process...")
     
-    // Get channel ID
-    const channelId = await getChannelId(CHANNEL_HANDLE)
-    if (!channelId) {
-      return { isSuccess: false, message: "Could not find YouTube channel" }
-    }
+    // Use Greg Isenberg's channel ID directly
+    const channelId = GREG_CHANNEL_ID
+    console.log("[YouTube Import] Using channel ID:", channelId)
     
     // Get uploads playlist
     const uploadsPlaylistId = await getUploadsPlaylistId(channelId)
