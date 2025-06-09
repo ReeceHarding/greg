@@ -24,9 +24,14 @@ import {
   FileText, 
   AlertCircle,
   Clock,
-  Send
+  Send,
+  Eye,
+  X
 } from "lucide-react"
 import { format } from "date-fns"
+import MultiStepSubmissionForm from "./multi-step-submission-form"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 
 interface AssignmentDetailClientProps {
   assignment: FirebaseAssignment
@@ -41,12 +46,9 @@ export default function AssignmentDetailClient({
 }: AssignmentDetailClientProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
-  // Form state
-  const [videoUrl, setVideoUrl] = useState(existingSubmission?.content.videoUrl || "")
-  const [githubUrl, setGithubUrl] = useState(existingSubmission?.content.githubUrl || "")
-  const [reflection, setReflection] = useState(existingSubmission?.content.reflection || "")
-  const [supportingFiles, setSupportingFiles] = useState<File[]>([])
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [showMultiStepForm, setShowMultiStepForm] = useState(false)
+  const [formData, setFormData] = useState<any>(null)
   
   console.log(`[AssignmentDetailClient] Rendering assignment: ${assignment.title}`)
   
@@ -76,30 +78,8 @@ export default function AssignmentDetailClient({
     }
   }
   
-  // Handle file selection
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files) {
-      const fileArray = Array.from(files)
-      // Limit to 5 files
-      if (fileArray.length > 5) {
-        toast.error("Maximum 5 files allowed")
-        return
-      }
-      // Check file sizes (max 10MB each)
-      const oversizedFiles = fileArray.filter(file => file.size > 10 * 1024 * 1024)
-      if (oversizedFiles.length > 0) {
-        toast.error("Files must be under 10MB each")
-        return
-      }
-      setSupportingFiles(fileArray)
-    }
-  }
-  
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent, isDraft: boolean = false) => {
-    e.preventDefault()
-    
+  // Handle form submission from multi-step form
+  const handleSubmit = async (data: any, isDraft: boolean = false) => {
     console.log(`[AssignmentDetailClient] Submitting assignment as ${isDraft ? 'draft' : 'final'}`)
     
     setIsSubmitting(true)
@@ -107,7 +87,7 @@ export default function AssignmentDetailClient({
     try {
       // Upload supporting files if any
       const uploadedFiles = []
-      for (const file of supportingFiles) {
+      for (const file of data.supportingFiles || []) {
         console.log(`[AssignmentDetailClient] Uploading file: ${file.name}`)
         
         const buffer = await file.arrayBuffer()
@@ -130,19 +110,22 @@ export default function AssignmentDetailClient({
         }
       }
       
-      // Prepare submission data
+      // Prepare submission data with tech stack and project description
       const submissionData = {
         studentId: userId,
         assignmentId: assignment.assignmentId,
         status: (isDraft ? "in_progress" : "submitted") as FirebaseSubmission['status'],
         content: {
-          videoUrl: videoUrl || null,
-          githubUrl: githubUrl || null,
-          reflection: reflection || null,
+          videoUrl: data.videoUrl || null,
+          githubUrl: data.githubUrl || null,
+          reflection: data.reflection || null,
           supportingFiles: [
             ...(existingSubmission?.content.supportingFiles || []),
             ...uploadedFiles
-          ]
+          ],
+          // Store additional data in reflection for now (will expand schema later)
+          techStack: data.techStack || [],
+          projectDescription: data.projectDescription || ""
         }
       }
       
@@ -175,6 +158,7 @@ export default function AssignmentDetailClient({
           }
         }
         
+        setShowMultiStepForm(false)
         router.refresh()
       } else {
         throw new Error(result.message)
@@ -186,6 +170,12 @@ export default function AssignmentDetailClient({
     } finally {
       setIsSubmitting(false)
     }
+  }
+  
+  // Handle preview modal
+  const handlePreviewSubmission = () => {
+    if (!formData) return
+    setShowPreviewModal(true)
   }
   
   return (
@@ -290,129 +280,158 @@ export default function AssignmentDetailClient({
         </Card>
       )}
       
-      {/* Submission Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Submit Your Work</CardTitle>
-          <CardDescription>
-            {existingSubmission ? "Update your submission" : "Complete the requirements and submit your work"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
-            {assignment.requirements.videoDemo && (
-              <div className="space-y-2">
-                <Label htmlFor="videoUrl">Video Demo URL</Label>
-                <Input
-                  id="videoUrl"
-                  type="url"
-                  placeholder="https://youtube.com/watch?v=... or https://loom.com/share/..."
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  disabled={isSubmitting}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Upload your demo to YouTube or Loom and paste the link here
+      {/* Submission Form Button */}
+      {!showMultiStepForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Submit Your Work</CardTitle>
+            <CardDescription>
+              {existingSubmission ? "Update your submission" : "Complete the requirements and submit your work"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <div className="max-w-md mx-auto space-y-4">
+                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+                  <Send className="w-10 h-10 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold">Ready to submit?</h3>
+                <p className="text-muted-foreground">
+                  Use our guided submission process to ensure you include everything needed for a successful assignment.
                 </p>
+                <Button
+                  onClick={() => setShowMultiStepForm(true)}
+                  disabled={isPastDue}
+                  size="lg"
+                  className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white"
+                >
+                  {existingSubmission ? "Update Submission" : "Start Submission"}
+                </Button>
+                {isPastDue && (
+                  <p className="text-sm text-destructive">
+                    This assignment is past due and can no longer be submitted.
+                  </p>
+                )}
               </div>
-            )}
-            
-            {assignment.requirements.githubRepo && (
-              <div className="space-y-2">
-                <Label htmlFor="githubUrl">GitHub Repository URL</Label>
-                <Input
-                  id="githubUrl"
-                  type="url"
-                  placeholder="https://github.com/username/repository"
-                  value={githubUrl}
-                  onChange={(e) => setGithubUrl(e.target.value)}
-                  disabled={isSubmitting}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Multi-Step Submission Form */}
+      {showMultiStepForm && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="fixed inset-x-0 top-0 z-50 h-full overflow-y-auto">
+            <div className="min-h-full p-4 flex items-start justify-center">
+              <div className="w-full max-w-5xl my-8">
+                <div className="mb-4 flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Assignment Submission</h2>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowMultiStepForm(false)}
+                    className="rounded-full"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                <MultiStepSubmissionForm
+                  assignment={assignment}
+                  userId={userId}
+                  existingSubmission={existingSubmission}
+                  onSubmit={handleSubmit}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Link to your project repository
-                </p>
               </div>
-            )}
-            
-            {assignment.requirements.reflection && (
-              <div className="space-y-2">
-                <Label htmlFor="reflection">Written Reflection</Label>
-                <Textarea
-                  id="reflection"
-                  placeholder="Share your thoughts, learnings, and challenges..."
-                  value={reflection}
-                  onChange={(e) => setReflection(e.target.value)}
-                  disabled={isSubmitting}
-                  rows={6}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Reflect on your learning experience and the process
-                </p>
-              </div>
-            )}
-            
-            {assignment.requirements.supportingDocs && (
-              <div className="space-y-2">
-                <Label htmlFor="files">Supporting Documents (Optional)</Label>
-                <Input
-                  id="files"
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                  onChange={handleFileChange}
-                  disabled={isSubmitting}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Upload up to 5 files (max 10MB each)
-                </p>
-                {supportingFiles.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {supportingFiles.map((file, index) => (
-                      <div key={index} className="text-sm text-muted-foreground">
-                        • {file.name} ({(file.size / 1024 / 1024).toFixed(2)}MB)
-                      </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Submission Preview Modal */}
+      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submission Preview</DialogTitle>
+            <DialogDescription>
+              Review your submission before finalizing
+            </DialogDescription>
+          </DialogHeader>
+          
+          {formData && (
+            <div className="space-y-6 mt-4">
+              {formData.videoUrl && (
+                <div>
+                  <h4 className="font-semibold mb-2">Video Demo</h4>
+                  <a href={formData.videoUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    {formData.videoUrl}
+                  </a>
+                </div>
+              )}
+              
+              {formData.githubUrl && (
+                <div>
+                  <h4 className="font-semibold mb-2">GitHub Repository</h4>
+                  <a href={formData.githubUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    {formData.githubUrl}
+                  </a>
+                </div>
+              )}
+              
+              {formData.techStack && formData.techStack.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Tech Stack</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.techStack.map((tech: string) => (
+                      <Badge key={tech} variant="secondary">{tech}</Badge>
                     ))}
                   </div>
-                )}
+                </div>
+              )}
+              
+              {formData.projectDescription && (
+                <div>
+                  <h4 className="font-semibold mb-2">Project Description</h4>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{formData.projectDescription}</p>
+                </div>
+              )}
+              
+              {formData.reflection && (
+                <div>
+                  <h4 className="font-semibold mb-2">Reflection</h4>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{formData.reflection}</p>
+                </div>
+              )}
+              
+              {formData.supportingFiles && formData.supportingFiles.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Supporting Files</h4>
+                  <ul className="space-y-1">
+                    {formData.supportingFiles.map((file: File, index: number) => (
+                      <li key={index} className="text-sm text-muted-foreground">
+                        • {file.name} ({(file.size / 1024 / 1024).toFixed(2)}MB)
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              <div className="flex gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowPreviewModal(false)}>
+                  Back to Edit
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleSubmit(formData, false)
+                    setShowPreviewModal(false)
+                  }}
+                  className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white"
+                >
+                  Submit Assignment
+                </Button>
               </div>
-            )}
-            
-            <div className="flex gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={(e) => handleSubmit(e as any, true)}
-                disabled={isSubmitting || isPastDue}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Clock className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Draft"
-                )}
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting || isPastDue}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Send className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Submit Assignment
-                  </>
-                )}
-              </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 
