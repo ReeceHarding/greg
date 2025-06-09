@@ -20,6 +20,7 @@
     "firestore:setup": "node scripts/setup-firestore.js",
     "firestore:deploy-rules": "node scripts/deploy-firestore-rules.js",
     "test:firebase": "tsx scripts/test-firebase.ts",
+    "add-admin": "tsx scripts/add-first-admin.ts",
     "prepare": "husky install"
   },
   "dependencies": {

@@ -74,7 +74,7 @@
 - **Middleware Protection**: All protected routes redirect to login when not authenticated
 
 ### Only Missing Feature
-- [ ] **Admin Role Assignment**
+- [x] **Admin Role Assignment**
   - Create Firebase Cloud Function to set custom claims
   - Only allow specific email addresses (stored in Firestore `adminEmails` collection)
   - Admin emails bypass student role assignment
