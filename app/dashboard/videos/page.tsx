@@ -5,6 +5,7 @@ import { auth } from "@/lib/firebase-auth"
 import { redirect } from "next/navigation"
 import { getVideosAction } from "@/actions/videos/video-actions"
 import Link from "next/link"
+import Image from "next/image"
 import ImportVideosButton from "./_components/import-videos-button"
 
 export default async function VideosPage() {
@@ -124,10 +125,12 @@ export default async function VideosPage() {
                 <div className="relative aspect-video bg-gradient-to-br from-muted to-muted/80 overflow-hidden">
                   {/* Actual Thumbnail Image */}
                   {video.thumbnailUrl && (
-                    <img 
+                    <Image 
                       src={video.thumbnailUrl} 
                       alt={video.title}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                   )}
                   

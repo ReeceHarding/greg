@@ -6,9 +6,26 @@ Configures Next.js for the app.
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    typedRoutes: false,
+  },
   images: {
-    remotePatterns: [{ hostname: "localhost" }]
-  }
-}
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+        pathname: '/vi/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
+  },
+};
 
-export default nextConfig
+export default nextConfig;
