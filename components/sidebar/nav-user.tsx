@@ -86,9 +86,17 @@ export function NavUser() {
   const handleSignOut = async () => {
     console.log("[NavUser] Signing out")
     try {
+      // First sign out from Firebase client-side auth
+      await auth.signOut()
+      console.log("[NavUser] Signed out from Firebase Auth")
+      
+      // Then delete the session cookie
       await fetch("/api/auth/session", {
         method: "DELETE",
       })
+      console.log("[NavUser] Session cookie deleted")
+      
+      // Redirect to home page
       router.push("/")
     } catch (error) {
       console.error("[NavUser] Error signing out:", error)

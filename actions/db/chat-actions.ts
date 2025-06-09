@@ -50,11 +50,12 @@ export async function createChatMessageAction(
     
     // Create the message
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const now = new Date()
     const messageData: ChatMessage = {
       messageId,
       role: data.role,
       content: data.content,
-      timestamp: FieldValue.serverTimestamp() as unknown as Timestamp,
+      timestamp: Timestamp.fromDate(now),
       videoReferences: data.videoId ? [{
         videoId: data.videoId,
         startTime: 0,
