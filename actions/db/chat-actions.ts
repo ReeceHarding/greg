@@ -81,17 +81,21 @@ export async function createChatMessageAction(
     // Create the message
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const now = new Date()
-    const messageData: ChatMessage = {
+    const messageData: any = {
       messageId,
       role: data.role,
       content: data.content,
-      timestamp: Timestamp.fromDate(now),
-      videoReferences: data.videoId ? [{
+      timestamp: Timestamp.fromDate(now)
+    }
+    
+    // Only add videoReferences if videoId is provided
+    if (data.videoId) {
+      messageData.videoReferences = [{
         videoId: data.videoId,
         startTime: 0,
         endTime: 0,
         relevanceScore: 1.0
-      }] : undefined
+      }]
     }
     
     // Update chat with new message
@@ -232,15 +236,16 @@ export async function updateChatTitleAction(
     }
     
     await chatRef.update({
-      title,
-      updatedAt: FieldValue.serverTimestamp()
+      'metadata.title': title,
+      'metadata.lastMessageAt': FieldValue.serverTimestamp()
     })
     
     const updatedDoc = await chatRef.get()
-    const updatedChat = {
+    const updatedData = updatedDoc.data()
+    const updatedChat = serializeChat({
       chatId: chatRef.id,
-      ...updatedDoc.data()
-    } as FirebaseChat
+      ...updatedData
+    })
     
     console.log(`[Chat Actions] Chat title updated successfully`)
     

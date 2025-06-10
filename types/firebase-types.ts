@@ -114,11 +114,12 @@ export interface InstructorFeedback {
 export interface FirebaseChat {
   chatId: string
   userId: string
-  type: "video_learning" | "progress_assistant"
+  type: "video_learning" | "progress_assistant" | "assignment_help"
   messages: ChatMessage[]
   metadata: {
     totalMessages: number
     lastMessageAt: Timestamp
+    title?: string
   }
   createdAt: Timestamp
 }

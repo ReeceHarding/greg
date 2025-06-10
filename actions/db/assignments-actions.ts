@@ -4,6 +4,7 @@ import { db, collections } from "@/db/db"
 import { FirebaseAssignment } from "@/types/firebase-types"
 import { ActionState } from "@/types"
 import { FieldValue } from 'firebase-admin/firestore'
+import { serializeDocument, serializeDocuments } from "@/lib/firebase-serialize"
 
 // Create a new assignment
 export async function createAssignmentAction(
@@ -99,14 +100,17 @@ export async function getAllAssignmentsAction(): Promise<ActionState<FirebaseAss
     const assignments = snapshot.docs.map(doc => ({ 
       assignmentId: doc.id, 
       ...doc.data() 
-    } as FirebaseAssignment))
+    }))
     
-    console.log(`[Assignments Action] Retrieved ${assignments.length} assignments`)
+    // Serialize assignments to handle Firestore timestamps
+    const serializedAssignments = serializeDocuments<FirebaseAssignment>(assignments)
+    
+    console.log(`[Assignments Action] Retrieved ${serializedAssignments.length} assignments`)
     
     return {
       isSuccess: true,
       message: "Assignments retrieved successfully",
-      data: assignments
+      data: serializedAssignments
     }
   } catch (error) {
     console.error("[Assignments Action] Error getting assignments:", error)
@@ -135,14 +139,17 @@ export async function getAssignmentsByWeekAction(
     const assignments = snapshot.docs.map(doc => ({ 
       assignmentId: doc.id, 
       ...doc.data() 
-    } as FirebaseAssignment))
+    }))
     
-    console.log(`[Assignments Action] Retrieved ${assignments.length} assignments for week ${weekNumber}`)
+    // Serialize assignments to handle Firestore timestamps
+    const serializedAssignments = serializeDocuments<FirebaseAssignment>(assignments)
+    
+    console.log(`[Assignments Action] Retrieved ${serializedAssignments.length} assignments for week ${weekNumber}`)
     
     return {
       isSuccess: true,
       message: "Assignments retrieved successfully",
-      data: assignments
+      data: serializedAssignments
     }
   } catch (error) {
     console.error("[Assignments Action] Error getting assignments by week:", error)
@@ -171,14 +178,17 @@ export async function getCurrentWeekAssignmentsAction(): Promise<ActionState<Fir
     const assignments = snapshot.docs.map(doc => ({ 
       assignmentId: doc.id, 
       ...doc.data() 
-    } as FirebaseAssignment))
+    }))
     
-    console.log(`[Assignments Action] Retrieved ${assignments.length} current assignments`)
+    // Serialize assignments to handle Firestore timestamps
+    const serializedAssignments = serializeDocuments<FirebaseAssignment>(assignments)
+    
+    console.log(`[Assignments Action] Retrieved ${serializedAssignments.length} current assignments`)
     
     return {
       isSuccess: true,
       message: "Current assignments retrieved successfully",
-      data: assignments
+      data: serializedAssignments
     }
   } catch (error) {
     console.error("[Assignments Action] Error getting current assignments:", error)

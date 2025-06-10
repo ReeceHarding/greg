@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/firebase-auth"
 import { redirect } from "next/navigation"
-import ChatClient from "./_components/chat-client"
+import ChatPageWrapper from "./_components/chat-page-wrapper"
 
 export default async function ChatPage() {
   console.log("[ChatPage] Checking authentication")
@@ -17,8 +17,8 @@ export default async function ChatPage() {
 
   return (
     <div className="h-screen bg-white flex">
-      {/* Chat Container - Full screen without header */}
-      <ChatClient userId={user.userId} />
+      {/* Chat Container with History Sidebar */}
+      <ChatPageWrapper userId={user.userId} />
     </div>
   )
 } 

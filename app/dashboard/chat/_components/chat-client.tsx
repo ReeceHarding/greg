@@ -21,9 +21,10 @@ interface Message {
 
 interface ChatClientProps {
   userId: string
+  chatId?: string | null
 }
 
-export default function ChatClient({ userId }: ChatClientProps) {
+export default function ChatClient({ userId, chatId: propChatId }: ChatClientProps) {
   const searchParams = useSearchParams()
   const videoId = searchParams.get("videoId")
   
@@ -101,17 +102,25 @@ export default function ChatClient({ userId }: ChatClientProps) {
     const initializeChat = async () => {
       console.log("[Chat Client] Initializing chat...")
       setIsInitializing(true)
+      setMessages([]) // Clear messages when switching chats
       
       try {
-        // Get today's date for session-based chat
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const dateKey = today.toISOString().split('T')[0]
+        let newChatId: string
         
-        // Generate consistent chatId based on date and video context
-        const newChatId = videoId 
-          ? `${userId}-video-${videoId}-${dateKey}`
-          : `${userId}-general-${dateKey}`
+        if (propChatId) {
+          // Use the provided chat ID (from history)
+          newChatId = propChatId
+        } else {
+          // Generate new chat ID for new conversations
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const dateKey = today.toISOString().split('T')[0]
+          
+          // Generate consistent chatId based on date and video context
+          newChatId = videoId 
+            ? `${userId}-video-${videoId}-${dateKey}`
+            : `${userId}-general-${dateKey}`
+        }
         
         console.log("[Chat Client] Using chat ID:", newChatId)
         setChatId(newChatId)
@@ -166,7 +175,7 @@ export default function ChatClient({ userId }: ChatClientProps) {
     }
 
     initializeChat()
-  }, [userId, videoId])
+  }, [userId, videoId, propChatId])
 
   // Handle @ mentions
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -365,12 +374,43 @@ export default function ChatClient({ userId }: ChatClientProps) {
     )
   }
   
-  // Parse markdown with support for video recommendations
+  // Parse markdown with support for video recommendations and timestamps
   const parseMarkdown = (text: string) => {
     const elements: React.ReactElement[] = []
     let lastIndex = 0
     
-    // Parse video recommendations with thumbnails
+    // First, handle timestamps [1:23](timestamp:83) or [1:23:45](timestamp:5025)
+    const timestampRegex = /\[(\d{1,2}(?::\d{2}){1,2})\]\(timestamp:(\d+)\)/g
+    let timestampMatch
+    const timestamps: Array<{index: number, length: number, element: React.ReactElement}> = []
+    
+    while ((timestampMatch = timestampRegex.exec(text)) !== null) {
+      const [fullMatch, displayTime, seconds] = timestampMatch
+      const videoUrl = video ? `/dashboard/videos/${video.videoId}?t=${seconds}` : `#`
+      
+      timestamps.push({
+        index: timestampMatch.index,
+        length: fullMatch.length,
+        element: (
+          <a
+            key={`timestamp-${timestampMatch.index}`}
+            href={videoUrl}
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md text-sm font-medium transition-colors duration-200"
+            onClick={(e) => {
+              if (video) {
+                e.preventDefault()
+                window.open(videoUrl, '_blank')
+              }
+            }}
+          >
+            <Video className="w-3 h-3" />
+            {displayTime}
+          </a>
+        )
+      })
+    }
+    
+    // Then handle video recommendations
     const videoRegex = /\[VIDEO: ([^\]]+)\]\(([^)]+)\)/g
     let match
     
@@ -425,14 +465,90 @@ export default function ChatClient({ userId }: ChatClientProps) {
     
     // Add any remaining text
     if (lastIndex < text.length) {
-      elements.push(
-        <span key={`text-${lastIndex}`} dangerouslySetInnerHTML={{ 
-          __html: parseBasicMarkdown(text.substring(lastIndex)) 
-        }} />
-      )
+      let remainingText = text.substring(lastIndex)
+      
+      // Check if any timestamps are in this remaining portion
+      const relevantTimestamps = timestamps.filter(ts => ts.index >= lastIndex)
+      
+      if (relevantTimestamps.length > 0) {
+        let textParts: React.ReactElement[] = []
+        let currentIndex = 0
+        
+        relevantTimestamps.forEach((ts, idx) => {
+          const relativeIndex = ts.index - lastIndex
+          if (relativeIndex > currentIndex) {
+            textParts.push(
+              <span key={`text-part-${idx}`} dangerouslySetInnerHTML={{ 
+                __html: parseBasicMarkdown(remainingText.substring(currentIndex, relativeIndex)) 
+              }} />
+            )
+          }
+          textParts.push(ts.element)
+          currentIndex = relativeIndex + ts.length
+        })
+        
+        if (currentIndex < remainingText.length) {
+          textParts.push(
+            <span key={`text-part-final`} dangerouslySetInnerHTML={{ 
+              __html: parseBasicMarkdown(remainingText.substring(currentIndex)) 
+            }} />
+          )
+        }
+        
+        elements.push(...textParts)
+      } else {
+        elements.push(
+          <span key={`text-${lastIndex}`} dangerouslySetInnerHTML={{ 
+            __html: parseBasicMarkdown(remainingText) 
+          }} />
+        )
+      }
     }
     
-    return elements.length > 0 ? elements : <span dangerouslySetInnerHTML={{ __html: parseBasicMarkdown(text) }} />
+    // If no special elements were found, parse the text with timestamps
+    if (elements.length === 0) {
+      // Apply timestamp replacements to the entire text
+      let processedText = text
+      timestamps.reverse().forEach(ts => {
+        processedText = processedText.substring(0, ts.index) + 
+                       `<TIMESTAMP_${ts.index}>` + 
+                       processedText.substring(ts.index + ts.length)
+      })
+      
+      // Parse basic markdown
+      const parsedHtml = parseBasicMarkdown(processedText)
+      
+      // Replace timestamp placeholders with actual elements
+      if (timestamps.length > 0) {
+        const tempDiv = document.createElement('div')
+        tempDiv.innerHTML = parsedHtml
+        
+        timestamps.forEach(ts => {
+          const placeholder = `<TIMESTAMP_${ts.index}>`
+          const placeholderRegex = new RegExp(placeholder, 'g')
+          tempDiv.innerHTML = tempDiv.innerHTML.replace(placeholderRegex, `<span id="ts-${ts.index}"></span>`)
+        })
+        
+        return (
+          <div dangerouslySetInnerHTML={{ __html: tempDiv.innerHTML }} ref={(el) => {
+            if (el) {
+              timestamps.forEach(ts => {
+                const placeholder = el.querySelector(`#ts-${ts.index}`)
+                if (placeholder && placeholder.parentNode) {
+                  const wrapper = document.createElement('span')
+                  placeholder.parentNode.replaceChild(wrapper, placeholder)
+                  // We'll use React portal or a different approach here
+                }
+              })
+            }
+          }} />
+        )
+      }
+      
+      return <span dangerouslySetInnerHTML={{ __html: parsedHtml }} />
+    }
+    
+    return elements
   }
   
   // Basic markdown parsing for other elements
@@ -550,7 +666,7 @@ export default function ChatClient({ userId }: ChatClientProps) {
                 )}
               >
                 {message.role === "assistant" && (
-                  <div className="flex-shrink-0 w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                  <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
                     <Bot className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -559,7 +675,7 @@ export default function ChatClient({ userId }: ChatClientProps) {
                   className={cn(
                     "max-w-[70%] rounded-2xl px-4 py-2",
                     message.role === "assistant"
-                      ? "bg-gray-100 text-gray-900"
+                      ? "bg-gradient-to-br from-blue-50 to-blue-100/70 text-blue-900 border border-blue-200/50"
                       : "bg-purple-600 text-white"
                   )}
                 >
@@ -590,14 +706,14 @@ export default function ChatClient({ userId }: ChatClientProps) {
             
             {isLoading && (
               <div className="flex gap-3 justify-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
-                <div className="bg-gray-100 rounded-2xl px-4 py-2">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100/70 border border-blue-200/50 rounded-2xl px-4 py-2">
                   <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                   </div>
                 </div>
               </div>
