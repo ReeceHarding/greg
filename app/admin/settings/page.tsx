@@ -8,13 +8,6 @@ import { auth } from "@/lib/firebase-auth"
 export default async function AdminSettingsPage() {
   return (
     <div className="container mx-auto py-10 space-y-10">
-      <div>
-        <h1 className="text-2xl font-semibold mb-2">Admin Settings</h1>
-        <p className="text-muted-foreground text-sm">
-          Manage admin access and platform settings
-        </p>
-      </div>
-
       <div className="space-y-8">
         <section className="space-y-4">
           <Suspense

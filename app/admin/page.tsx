@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { getAllProfilesAction } from "@/actions/db/profiles-actions"
 import { getAllSubmissionsAction } from "@/actions/db/submissions-actions"
 import { getAllProgressAction } from "@/actions/db/progress-actions"
+import { getAllAssignmentsAction } from "@/actions/db/assignments-actions"
 
 // Helper function to format relative time
 function formatRelativeTime(date: Date): string {
@@ -31,17 +32,19 @@ export default async function AdminDashboard() {
   console.log("[AdminDashboard] Fetching dashboard data")
   
   // Fetch all data needed for the dashboard
-  const [profilesResult, submissionsResult, progressResult] = await Promise.all([
+  const [profilesResult, submissionsResult, progressResult, assignmentsResult] = await Promise.all([
     getAllProfilesAction(),
     getAllSubmissionsAction(),
-    getAllProgressAction()
+    getAllProgressAction(),
+    getAllAssignmentsAction()
   ])
   
   const profiles = profilesResult.isSuccess ? profilesResult.data : []
   const submissions = submissionsResult.isSuccess ? submissionsResult.data : []
   const progress = progressResult.isSuccess ? progressResult.data : []
+  const assignments = assignmentsResult.isSuccess ? assignmentsResult.data : []
   
-  console.log("[AdminDashboard] Data fetched - profiles:", profiles.length, "submissions:", submissions.length)
+  console.log("[AdminDashboard] Data fetched - profiles:", profiles.length, "submissions:", submissions.length, "assignments:", assignments.length)
   
   // Calculate real stats
   const students = profiles.filter(p => p.email !== authResult.user!.email) // Exclude current admin
@@ -81,16 +84,40 @@ export default async function AdminDashboard() {
     })
     .slice(0, 5)
   
-  // At-risk students (no activity in 5+ days)
-  const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
-  const atRiskCount = students.length - Array.from(activeStudentIds).filter(id => {
-    const studentProgress = progress.find(p => p.studentId === id)
-    if (!studentProgress) return false
-    const lastActive = studentProgress.lastCalculatedAt as any
-    if (!lastActive) return false
-    const lastActiveDate = lastActive instanceof Date ? lastActive : new Date(lastActive)
-    return lastActiveDate > fiveDaysAgo
-  }).length
+  // Calculate at-risk students based on missing assignments
+  // Get current week based on today's date
+  const currentWeek = Math.max(...assignments.map(a => a.weekNumber).filter(w => {
+    const assignment = assignments.find(a => a.weekNumber === w)
+    if (!assignment?.dueDate) return false
+    const dueDate = assignment.dueDate instanceof Date ? assignment.dueDate : 
+                   typeof assignment.dueDate === 'string' ? new Date(assignment.dueDate) : 
+                   new Date(assignment.dueDate.seconds * 1000)
+    return dueDate <= now
+  }), 1)
+  
+  // Students at risk are those who haven't submitted current or previous week's assignment
+  const atRiskStudents = students.filter(student => {
+    // Get all submissions for this student
+    const studentSubmissions = submissions.filter(s => s.studentId === student.userId)
+    
+    // Check if they submitted for current week
+    const currentWeekAssignment = assignments.find(a => a.weekNumber === currentWeek)
+    const hasCurrentWeekSubmission = currentWeekAssignment && 
+      studentSubmissions.some(s => s.assignmentId === currentWeekAssignment.assignmentId)
+    
+    // Check if they submitted for previous week (if we're past week 1)
+    let hasPreviousWeekSubmission = true
+    if (currentWeek > 1) {
+      const previousWeekAssignment = assignments.find(a => a.weekNumber === currentWeek - 1)
+      hasPreviousWeekSubmission = previousWeekAssignment && 
+        studentSubmissions.some(s => s.assignmentId === previousWeekAssignment.assignmentId)
+    }
+    
+    // Student is at risk if they haven't submitted current week OR previous week
+    return !hasCurrentWeekSubmission || !hasPreviousWeekSubmission
+  })
+  
+  const atRiskCount = atRiskStudents.length
 
   return (
     <div className="min-h-screen bg-white">

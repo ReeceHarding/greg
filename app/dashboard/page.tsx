@@ -537,7 +537,7 @@ async function DashboardContent() {
               </p>
             </div>
             <Link href="/dashboard/assignments">
-              <Button variant="gradient" className="group bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600">
+              <Button variant="gradient" className="group bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white">
                 <Sparkles className="mr-2 size-4 transition-transform group-hover:rotate-12" />
                 {completedSubmissions === 0 ? "Start Building" : "Continue Building"}
                 <ArrowUpRight className="ml-1 size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
