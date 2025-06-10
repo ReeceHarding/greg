@@ -14,7 +14,8 @@ import {
   Video,
   BookOpen,
   X,
-  Check
+  Check,
+  Search
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { format, isToday, isYesterday, isThisWeek, isThisMonth } from "date-fns"
@@ -39,6 +40,7 @@ export default function ChatHistorySidebar({
   const [isLoading, setIsLoading] = useState(true)
   const [editingChatId, setEditingChatId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
 
   console.log("[Chat History Sidebar] Component rendered")
 
@@ -71,7 +73,7 @@ export default function ChatHistorySidebar({
   }, [userId])
 
   // Group chats by date
-  const groupChatsByDate = () => {
+  const groupChatsByDate = (chatsToGroup: FirebaseChat[]) => {
     const groups: Record<string, FirebaseChat[]> = {
       today: [],
       yesterday: [],
@@ -80,7 +82,7 @@ export default function ChatHistorySidebar({
       older: []
     }
 
-    chats.forEach(chat => {
+    chatsToGroup.forEach(chat => {
       const lastMessageDate = chat.metadata?.lastMessageAt
       if (!lastMessageDate) {
         groups.older.push(chat)
@@ -210,7 +212,25 @@ export default function ChatHistorySidebar({
     }
   }
 
-  const chatGroups = groupChatsByDate()
+  // Filter chats based on search query
+  const filteredChats = chats.filter(chat => {
+    if (!searchQuery.trim()) return true
+    
+    const title = getChatTitle(chat).toLowerCase()
+    const query = searchQuery.toLowerCase()
+    
+    // Search in title
+    if (title.includes(query)) return true
+    
+    // Search in messages
+    const hasMatchingMessage = chat.messages?.some(msg => 
+      msg.content.toLowerCase().includes(query)
+    )
+    
+    return hasMatchingMessage
+  })
+
+  const chatGroups = groupChatsByDate(filteredChats)
 
   return (
     <div className={cn(
@@ -218,7 +238,7 @@ export default function ChatHistorySidebar({
       className
     )}>
       {/* Header */}
-      <div className="p-4 border-b border-border/40">
+      <div className="p-4 border-b border-border/40 space-y-3">
         <Button
           onClick={onNewChat}
           className="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
@@ -226,6 +246,26 @@ export default function ChatHistorySidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Chat
         </Button>
+        
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search chats..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-3 py-2 bg-white/70 border border-border/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 transition-all duration-200 text-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Chat List */}
@@ -238,6 +278,10 @@ export default function ChatHistorySidebar({
           ) : chats.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               No chats yet. Start a new conversation!
+            </div>
+          ) : filteredChats.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              No chats found matching "{searchQuery}"
             </div>
           ) : (
             <>

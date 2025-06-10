@@ -85,7 +85,7 @@ export default function ChatPageWrapper({ userId }: ChatPageWrapperProps) {
       )}
 
       {/* Chat Client */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative h-full">
         <ChatClient key={key} userId={userId} chatId={currentChatId} />
       </div>
     </div>

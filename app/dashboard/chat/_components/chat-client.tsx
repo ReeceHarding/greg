@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
-import { createChatMessageAction, getUserChatsAction } from "@/actions/db/chat-actions"
+import { createChatMessageAction, getUserChatsAction, updateChatTitleAction } from "@/actions/db/chat-actions"
 import { getVideoByIdAction } from "@/actions/videos/video-actions"
 import { getSubmissionsByStudentAction } from "@/actions/db/submissions-actions"
 import { getAllAssignmentsAction } from "@/actions/db/assignments-actions"
+import { generateChatTitleAction } from "@/actions/ai/title-generation-actions"
 import { SerializedFirebaseVideo, FirebaseSubmission, FirebaseAssignment } from "@/types/firebase-types"
 import { toast } from "@/hooks/use-toast"
 import { Send, Bot, User, AtSign, FileText, Video, ChevronRight, X } from "lucide-react"
@@ -211,6 +212,9 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
     setIsLoading(true)
     isUserScrolling.current = false // Reset scroll lock when user sends message
 
+    // Check if this is the first message in the chat (for title generation)
+    const isFirstMessage = messages.length === 0
+
     // Add user message to UI
     const tempUserMessage: Message = {
       id: `temp-user-${Date.now()}`,
@@ -231,6 +235,17 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
 
     if (!messageResult.isSuccess) {
       console.error("[Chat Client] Failed to save message")
+    }
+
+    // Generate title for new chats after the first message
+    if (isFirstMessage && chatId) {
+      console.log("[Chat Client] Generating title for new chat")
+      const titleResult = await generateChatTitleAction(userMessage)
+      if (titleResult.isSuccess && titleResult.data) {
+        console.log("[Chat Client] Generated title:", titleResult.data)
+        // Update the chat title
+        await updateChatTitleAction(chatId, userId, titleResult.data)
+      }
     }
 
     const tempAssistantMessage: Message = {
@@ -361,7 +376,7 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
   // Show initialization state
   if (isInitializing) {
     return (
-      <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
+      <div className="flex h-full bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
@@ -597,7 +612,7 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
   }
 
   return (
-    <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
+    <div className="flex h-full bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
       {/* Header */}
       <div className="border-b border-border/40 px-6 py-4 bg-gradient-to-r from-purple-50 to-purple-100/50">
         <div className="flex items-center justify-between">

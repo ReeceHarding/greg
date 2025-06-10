@@ -107,10 +107,16 @@ export async function createChatMessageAction(
     
     console.log(`[Chat Actions] Message created successfully: ${messageId}`)
     
+    // Serialize the message data before returning
+    const serializedMessage: ChatMessage = {
+      ...messageData,
+      timestamp: serializeTimestamp(messageData.timestamp)
+    }
+    
     return {
       isSuccess: true,
       message: "Message created successfully",
-      data: messageData
+      data: serializedMessage
     }
   } catch (error) {
     // Don't log the full error object to avoid Next.js serialization issues
