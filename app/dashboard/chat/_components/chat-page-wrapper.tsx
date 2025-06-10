@@ -48,7 +48,7 @@ export default function ChatPageWrapper({ userId }: ChatPageWrapperProps) {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-[calc(100vh-theme(spacing.16))]">
       {/* Mobile sidebar toggle */}
       <Button
         variant="ghost"
@@ -85,7 +85,7 @@ export default function ChatPageWrapper({ userId }: ChatPageWrapperProps) {
       )}
 
       {/* Chat Client */}
-      <div className="flex-1 relative h-full">
+      <div className="flex-1 relative h-full p-4">
         <ChatClient key={key} userId={userId} chatId={currentChatId} />
       </div>
     </div>

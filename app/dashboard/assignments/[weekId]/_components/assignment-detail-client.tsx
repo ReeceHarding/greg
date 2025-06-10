@@ -110,7 +110,7 @@ export default function AssignmentDetailClient({
         }
       }
       
-      // Prepare submission data with tech stack and project description
+      // Prepare submission data - simplified structure
       const submissionData = {
         studentId: userId,
         assignmentId: assignment.assignmentId,
@@ -122,10 +122,7 @@ export default function AssignmentDetailClient({
           supportingFiles: [
             ...(existingSubmission?.content.supportingFiles || []),
             ...uploadedFiles
-          ],
-          // Store additional data in reflection for now (will expand schema later)
-          techStack: data.techStack || [],
-          projectDescription: data.projectDescription || ""
+          ]
         }
       }
       
@@ -373,24 +370,6 @@ export default function AssignmentDetailClient({
                   <a href={formData.githubUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     {formData.githubUrl}
                   </a>
-                </div>
-              )}
-              
-              {formData.techStack && formData.techStack.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Tech Stack</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.techStack.map((tech: string) => (
-                      <Badge key={tech} variant="secondary">{tech}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {formData.projectDescription && (
-                <div>
-                  <h4 className="font-semibold mb-2">Project Description</h4>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{formData.projectDescription}</p>
                 </div>
               )}
               

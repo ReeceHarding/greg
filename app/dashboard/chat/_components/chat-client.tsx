@@ -376,7 +376,7 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
   // Show initialization state
   if (isInitializing) {
     return (
-      <div className="flex h-full bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
+      <div className="flex h-full bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
@@ -394,14 +394,44 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
     const elements: React.ReactElement[] = []
     let lastIndex = 0
     
-    // First, handle timestamps [1:23](timestamp:83) or [1:23:45](timestamp:5025)
-    const timestampRegex = /\[(\d{1,2}(?::\d{2}){1,2})\]\(timestamp:(\d+)\)/g
+    // First, handle timestamps [0:05], [10:03], [49:36] or with (timestamp:seconds)
+    const timestampRegex = /\[(\d{1,2}:\d{2}(?::\d{2})?)\](?:\(timestamp:(\d+)\))?/g
     let timestampMatch
     const timestamps: Array<{index: number, length: number, element: React.ReactElement}> = []
     
     while ((timestampMatch = timestampRegex.exec(text)) !== null) {
       const [fullMatch, displayTime, seconds] = timestampMatch
-      const videoUrl = video ? `/dashboard/videos/${video.videoId}?t=${seconds}` : `#`
+      
+      // Extract seconds from display time if not provided
+      let totalSeconds = seconds ? parseInt(seconds) : 0
+      if (!seconds && displayTime) {
+        const parts = displayTime.split(':').map(p => parseInt(p))
+        if (parts.length === 2) {
+          totalSeconds = parts[0] * 60 + parts[1]
+        } else if (parts.length === 3) {
+          totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2]
+        }
+      }
+      
+      // Try to find the video ID from the nearest video context
+      let videoId = video?.videoId
+      
+      // Check if there's a video reference in the nearby text
+      const videoRefRegex = /(?:from\s+"([^"]+)"|video:\s*([a-zA-Z0-9_-]{11}))/gi
+      const nearbyText = text.substring(Math.max(0, timestampMatch.index - 100), timestampMatch.index + 100)
+      const videoRefMatch = videoRefRegex.exec(nearbyText)
+      
+      if (videoRefMatch) {
+        // If we found a video ID pattern
+        const potentialVideoId = videoRefMatch[2]
+        if (potentialVideoId && /^[a-zA-Z0-9_-]{11}$/.test(potentialVideoId)) {
+          videoId = potentialVideoId
+        }
+      }
+      
+      const youtubeUrl = videoId 
+        ? `https://www.youtube.com/watch?v=${videoId}&t=${totalSeconds}` 
+        : '#'
       
       timestamps.push({
         index: timestampMatch.index,
@@ -409,12 +439,20 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
         element: (
           <a
             key={`timestamp-${timestampMatch.index}`}
-            href={videoUrl}
+            href={youtubeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md text-sm font-medium transition-colors duration-200"
             onClick={(e) => {
-              if (video) {
+              if (videoId) {
+                console.log(`[Chat Client] Opening YouTube at timestamp: ${displayTime} (${totalSeconds}s)`)
+              } else {
                 e.preventDefault()
-                window.open(videoUrl, '_blank')
+                toast({
+                  title: "No video context",
+                  description: "Unable to determine which video this timestamp refers to",
+                  variant: "destructive"
+                })
               }
             }}
           >
@@ -425,7 +463,7 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
       })
     }
     
-    // Then handle video recommendations
+    // Then handle video recommendations [VIDEO: title](videoId)
     const videoRegex = /\[VIDEO: ([^\]]+)\]\(([^)]+)\)/g
     let match
     
@@ -522,45 +560,34 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
     
     // If no special elements were found, parse the text with timestamps
     if (elements.length === 0) {
-      // Apply timestamp replacements to the entire text
-      let processedText = text
-      timestamps.reverse().forEach(ts => {
-        processedText = processedText.substring(0, ts.index) + 
-                       `<TIMESTAMP_${ts.index}>` + 
-                       processedText.substring(ts.index + ts.length)
+      // Process timestamps in the entire text
+      let processedElements: React.ReactElement[] = []
+      let currentPos = 0
+      
+      // Sort timestamps by position
+      timestamps.sort((a, b) => a.index - b.index)
+      
+      timestamps.forEach(ts => {
+        if (ts.index > currentPos) {
+          processedElements.push(
+            <span key={`text-before-${ts.index}`} dangerouslySetInnerHTML={{ 
+              __html: parseBasicMarkdown(text.substring(currentPos, ts.index)) 
+            }} />
+          )
+        }
+        processedElements.push(ts.element)
+        currentPos = ts.index + ts.length
       })
       
-      // Parse basic markdown
-      const parsedHtml = parseBasicMarkdown(processedText)
-      
-      // Replace timestamp placeholders with actual elements
-      if (timestamps.length > 0) {
-        const tempDiv = document.createElement('div')
-        tempDiv.innerHTML = parsedHtml
-        
-        timestamps.forEach(ts => {
-          const placeholder = `<TIMESTAMP_${ts.index}>`
-          const placeholderRegex = new RegExp(placeholder, 'g')
-          tempDiv.innerHTML = tempDiv.innerHTML.replace(placeholderRegex, `<span id="ts-${ts.index}"></span>`)
-        })
-        
-        return (
-          <div dangerouslySetInnerHTML={{ __html: tempDiv.innerHTML }} ref={(el) => {
-            if (el) {
-              timestamps.forEach(ts => {
-                const placeholder = el.querySelector(`#ts-${ts.index}`)
-                if (placeholder && placeholder.parentNode) {
-                  const wrapper = document.createElement('span')
-                  placeholder.parentNode.replaceChild(wrapper, placeholder)
-                  // We'll use React portal or a different approach here
-                }
-              })
-            }
+      if (currentPos < text.length) {
+        processedElements.push(
+          <span key={`text-after-${currentPos}`} dangerouslySetInnerHTML={{ 
+            __html: parseBasicMarkdown(text.substring(currentPos)) 
           }} />
         )
       }
       
-      return <span dangerouslySetInnerHTML={{ __html: parsedHtml }} />
+      return processedElements.length > 0 ? processedElements : <span dangerouslySetInnerHTML={{ __html: parseBasicMarkdown(text) }} />
     }
     
     return elements
@@ -612,24 +639,7 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
   }
 
   return (
-    <div className="flex h-full bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
-      {/* Header */}
-      <div className="border-b border-border/40 px-6 py-4 bg-gradient-to-r from-purple-50 to-purple-100/50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-lg">Greg AI</h2>
-              <p className="text-sm text-muted-foreground">
-                {video ? `Discussing: ${video.title}` : "Your AI learning companion"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex h-full bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
       {/* Messages Area */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-8">
         {messages.length === 0 ? (
@@ -638,7 +648,7 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
               <Bot className="w-8 h-8 text-purple-600" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl font-semibold">Welcome to Greg AI!</h3>
+              <h3 className="text-xl font-semibold">Welcome to AI Chat</h3>
               <p className="text-muted-foreground">
                 I'm your personal AI coach, here to help you succeed in your entrepreneurship journey. 
                 Ask me anything about the course content, get feedback on your submissions, or discuss your startup ideas!
@@ -647,26 +657,25 @@ export default function ChatClient({ userId, chatId: propChatId }: ChatClientPro
             
             {/* Example questions */}
             <div className="w-full space-y-2">
-              <p className="text-sm text-muted-foreground mb-3">Try asking:</p>
+              <p className="text-sm font-medium text-muted-foreground">Try asking:</p>
               <div className="grid gap-2">
-                <button
-                  onClick={() => handleExampleQuestion("How can I validate my startup idea?")}
-                  className="text-left p-3 rounded-lg border border-border/40 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
-                >
-                  <span className="text-sm">How can I validate my startup idea?</span>
-                </button>
-                <button
-                  onClick={() => handleExampleQuestion("What makes a good MVP?")}
-                  className="text-left p-3 rounded-lg border border-border/40 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
-                >
-                  <span className="text-sm">What makes a good MVP?</span>
-                </button>
-                <button
-                  onClick={() => handleExampleQuestion("Can you review my latest submission? @")}
-                  className="text-left p-3 rounded-lg border border-border/40 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
-                >
-                  <span className="text-sm">Review my submission (type @ to select)</span>
-                </button>
+                {(video ? [
+                  "Can you summarize the key points from this video?",
+                  "What are the action items from this lesson?",
+                  "How can I apply these concepts to my startup?"
+                ] : [
+                  "What should I focus on this week?",
+                  "How do I validate my startup idea?",
+                  "Can you review my business model?"
+                ]).map((question, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleExampleQuestion(question)}
+                    className="text-left p-3 rounded-lg bg-purple-50 hover:bg-purple-100 text-sm text-purple-900 transition-colors duration-200"
+                  >
+                    {question}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

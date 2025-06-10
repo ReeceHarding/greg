@@ -59,20 +59,13 @@ async function ProgressDataFetcher({ userId }: { userId: string }) {
   
   const totalVideos = videosResult.isSuccess ? (videosResult.data?.length || 0) : 0
   
-  // Serialize assignments to convert Timestamps to Dates
-  const serializedAssignments = assignmentsResult.data.map(assignment => ({
-    ...assignment,
-    dueDate: (assignment.dueDate as any).toDate(),
-    createdAt: (assignment.createdAt as any).toDate(),
-    updatedAt: (assignment.updatedAt as any).toDate()
-  }))
-  
-  console.log(`[ProgressDataFetcher] Loaded ${serializedAssignments.length} assignments and ${totalVideos} videos`)
+  // Assignments are already serialized by getAllAssignmentsAction
+  console.log(`[ProgressDataFetcher] Loaded ${assignmentsResult.data.length} assignments and ${totalVideos} videos`)
   
   return (
     <ProgressClient 
       userId={userId}
-      assignments={serializedAssignments}
+      assignments={assignmentsResult.data as any}
       totalVideos={totalVideos}
     />
   )
