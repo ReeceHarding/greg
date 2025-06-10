@@ -67,16 +67,23 @@ export async function POST(request: NextRequest) {
     const sessionCookie = await createSessionCookie(idToken)
     console.log("[Session API] Session cookie created")
 
-    // Set the session cookie
+    // Set the session cookie with improved settings
     const cookieStore = await cookies()
-    cookieStore.set("session", sessionCookie, {
+    
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 5, // 5 days
-      path: "/"
-    })
-    console.log("[Session API] Session cookie set")
+      sameSite: "lax" as const,
+      maxAge: 60 * 60 * 24 * 14, // 14 days (longer persistence)
+      path: "/",
+      // Add domain for better cross-subdomain support in production
+      ...(process.env.NODE_ENV === "production" && process.env.COOKIE_DOMAIN
+        ? { domain: process.env.COOKIE_DOMAIN }
+        : {})
+    }
+    
+    cookieStore.set("session", sessionCookie, cookieOptions)
+    console.log("[Session API] Session cookie set with options:", cookieOptions)
 
     // If it's a new user, create their profile
     if (isNewUser) {
@@ -165,5 +172,50 @@ export async function DELETE(request: NextRequest) {
       { error: "Failed to delete session" },
       { status: 500 }
     )
+  }
+}
+
+// Add a GET endpoint to check session status
+export async function GET(request: NextRequest) {
+  console.log("[Session API] GET request received - checking session status")
+
+  try {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get("session")?.value
+
+    if (!sessionCookie) {
+      console.log("[Session API] No session cookie found")
+      return NextResponse.json({ authenticated: false })
+    }
+
+    if (!adminAuth) {
+      console.error("[Session API] Firebase Admin Auth not initialized")
+      return NextResponse.json({ authenticated: false })
+    }
+
+    try {
+      // Verify the session cookie
+      const decodedClaims = await adminAuth.verifySessionCookie(
+        sessionCookie,
+        true
+      )
+      
+      console.log("[Session API] Session valid for user:", decodedClaims.uid)
+      
+      return NextResponse.json({
+        authenticated: true,
+        user: {
+          uid: decodedClaims.uid,
+          email: decodedClaims.email,
+          role: decodedClaims.role
+        }
+      })
+    } catch (error) {
+      console.error("[Session API] Session verification failed:", error)
+      return NextResponse.json({ authenticated: false })
+    }
+  } catch (error) {
+    console.error("[Session API] Error checking session:", error)
+    return NextResponse.json({ authenticated: false })
   }
 }

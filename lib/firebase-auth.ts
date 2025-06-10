@@ -66,8 +66,8 @@ export async function createSessionCookie(idToken: string): Promise<string> {
   }
 
   try {
-    // Create session cookie that expires in 5 days
-    const expiresIn = 60 * 60 * 24 * 5 * 1000 // 5 days
+    // Create session cookie that expires in 14 days
+    const expiresIn = 60 * 60 * 24 * 14 * 1000 // 14 days
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn
     })

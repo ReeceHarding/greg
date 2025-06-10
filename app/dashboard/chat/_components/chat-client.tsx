@@ -1,11 +1,16 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { createChatMessageAction, getUserChatsAction } from "@/actions/db/chat-actions"
 import { getVideoByIdAction } from "@/actions/videos/video-actions"
-import { SerializedFirebaseVideo } from "@/types/firebase-types"
+import { getSubmissionsByStudentAction } from "@/actions/db/submissions-actions"
+import { getAllAssignmentsAction } from "@/actions/db/assignments-actions"
+import { SerializedFirebaseVideo, FirebaseSubmission, FirebaseAssignment } from "@/types/firebase-types"
 import { toast } from "@/hooks/use-toast"
+import { Send, Bot, User, AtSign, FileText, Video, ChevronRight, X } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 interface Message {
   id: string
@@ -25,279 +30,313 @@ export default function ChatClient({ userId }: ChatClientProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [video, setVideo] = useState<SerializedFirebaseVideo | null>(null)
-  const [chatId, setChatId] = useState<string>("")
-  const [error, setError] = useState<string | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
+  const [video, setVideo] = useState<SerializedFirebaseVideo | null>(null)
+  const [chatId, setChatId] = useState<string | null>(null)
+  const [showSubmissionPicker, setShowSubmissionPicker] = useState(false)
+  const [submissions, setSubmissions] = useState<FirebaseSubmission[]>([])
+  const [assignments, setAssignments] = useState<Map<string, FirebaseAssignment>>(new Map())
+  const [selectedSubmission, setSelectedSubmission] = useState<FirebaseSubmission | null>(null)
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const [isUserScrolling, setIsUserScrolling] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const lastMessageRef = useRef<string>("")
+  const isUserScrolling = useRef(false)
+  const lastScrollTop = useRef(0)
   
-  console.log("[ChatClient] Rendering with userId:", userId, "videoId:", videoId)
-  
-  // Generate or load chat ID
+  console.log("[Chat Client] Component rendered with videoId:", videoId)
+
+  // Track user scroll behavior
   useEffect(() => {
-    async function initializeChat() {
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50
+      
+      // Detect if user is scrolling up
+      if (scrollTop < lastScrollTop.current && !isAtBottom) {
+        isUserScrolling.current = true
+      } else if (isAtBottom) {
+        isUserScrolling.current = false
+      }
+      
+      lastScrollTop.current = scrollTop
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Scroll to bottom when new messages arrive (only if user isn't scrolling)
+  const scrollToBottom = () => {
+    if (!isUserScrolling.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  // Load video details if videoId is present
+  useEffect(() => {
+    const loadVideo = async () => {
+      if (videoId) {
+        console.log("[Chat Client] Loading video details for:", videoId)
+        const result = await getVideoByIdAction(videoId)
+        if (result.isSuccess && result.data) {
+          setVideo(result.data)
+          console.log("[Chat Client] Video loaded:", result.data.title)
+        }
+      }
+    }
+    loadVideo()
+  }, [videoId])
+
+  // Initialize chat on component mount
+  useEffect(() => {
+    const initializeChat = async () => {
+      console.log("[Chat Client] Initializing chat...")
       setIsInitializing(true)
       
-      // Generate a consistent chatId based on context
-      const dateKey = new Date().toISOString().split('T')[0]
-      const contextKey = videoId || 'general'
-      const newChatId = `chat_${userId}_${contextKey}_${dateKey}`
-      
-      console.log("[ChatClient] Initializing with chatId:", newChatId)
-      
-      // Try to load existing chat for today
       try {
-        const result = await getUserChatsAction(userId)
+        // Get today's date for session-based chat
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const dateKey = today.toISOString().split('T')[0]
         
-        if (result.isSuccess && result.data && result.data.length > 0) {
-          // Find a chat for today with the same context
-          const todayChat = result.data.find(chat => {
-            const chatType = videoId ? "video_learning" : "progress_assistant"
-            const isSameType = chat.type === chatType
-            const isSameContext = videoId ? chat.messages.some(m => m.videoReferences?.some(ref => ref.videoId === videoId)) : true
-            const isToday = chat.chatId.includes(dateKey)
-            
-            return isSameType && isSameContext && isToday
-          })
+        // Generate consistent chatId based on date and video context
+        const newChatId = videoId 
+          ? `${userId}-video-${videoId}-${dateKey}`
+          : `${userId}-general-${dateKey}`
+        
+        console.log("[Chat Client] Using chat ID:", newChatId)
+        setChatId(newChatId)
+        
+        // Load existing messages from this chat session
+        const historyResult = await getUserChatsAction(userId)
+        if (historyResult.isSuccess && historyResult.data) {
+          const todayChat = historyResult.data.find(chat => chat.chatId === newChatId)
           
-          if (todayChat) {
-            console.log("[ChatClient] Found existing chat for today:", todayChat.chatId)
-            setChatId(todayChat.chatId)
-            
-            // Load messages from the existing chat
-            const loadedMessages: Message[] = todayChat.messages.map((msg, index) => ({
-              id: `msg-${index}`,
-              role: msg.role as "user" | "assistant",
+          if (todayChat && todayChat.messages && todayChat.messages.length > 0) {
+            console.log("[Chat Client] Found existing chat with messages:", todayChat.messages.length)
+            const existingMessages: Message[] = todayChat.messages.map(msg => ({
+              id: msg.messageId,
+              role: msg.role,
               content: msg.content,
-              timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date()
+              timestamp: msg.timestamp instanceof Date ? msg.timestamp : 
+                        (msg.timestamp && typeof (msg.timestamp as any).toDate === 'function' ? 
+                         (msg.timestamp as any).toDate() : new Date())
             }))
             
-            setMessages(loadedMessages)
-          } else {
-            setChatId(newChatId)
+            // Sort by timestamp
+            existingMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+            setMessages(existingMessages)
           }
-        } else {
-          setChatId(newChatId)
+        }
+        
+        // Load user's submissions
+        const submissionsResult = await getSubmissionsByStudentAction(userId)
+        if (submissionsResult.isSuccess && submissionsResult.data) {
+          setSubmissions(submissionsResult.data)
+          console.log("[Chat Client] Loaded submissions:", submissionsResult.data.length)
+        }
+        
+        // Load assignments for mapping
+        const assignmentsResult = await getAllAssignmentsAction()
+        if (assignmentsResult.isSuccess && assignmentsResult.data) {
+          const assignmentMap = new Map(
+            assignmentsResult.data.map(a => [a.assignmentId, a])
+          )
+          setAssignments(assignmentMap)
         }
       } catch (error) {
-        console.error("[ChatClient] Error loading chat history:", error)
-        setChatId(newChatId)
+        console.error("[Chat Client] Error initializing chat:", error)
+        toast({
+          title: "Error",
+          description: "Failed to initialize chat. Please refresh the page.",
+          variant: "destructive"
+        })
       } finally {
         setIsInitializing(false)
       }
     }
-    
-    if (userId) {
-      initializeChat()
-    }
+
+    initializeChat()
   }, [userId, videoId])
-  
-  // Load video context if videoId is provided
-  useEffect(() => {
-    async function loadVideo() {
-      if (!videoId) return
-      
-      console.log("[ChatClient] Loading video context for:", videoId)
-      const result = await getVideoByIdAction(videoId)
-      
-      if (result.isSuccess && result.data) {
-        console.log("[ChatClient] Loaded video:", result.data.title)
-        setVideo(result.data)
-      }
-    }
+
+  // Handle @ mentions
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value
+    setInput(value)
     
-    loadVideo()
-  }, [videoId])
-  
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px"
+    // Check if user typed @ at the end
+    if (value.endsWith('@') && submissions.length > 0) {
+      setShowSubmissionPicker(true)
+    } else if (showSubmissionPicker && !value.includes('@')) {
+      setShowSubmissionPicker(false)
     }
-  }, [input])
-  
-  // Track if user has scrolled up
-  useEffect(() => {
-    const container = messagesContainerRef.current
-    if (!container) return
+  }
+
+  // Select a submission from the picker
+  const selectSubmission = (submission: FirebaseSubmission) => {
+    const assignment = assignments.get(submission.assignmentId)
+    const submissionRef = `@[Week ${assignment?.weekNumber || '?'}: ${assignment?.title || 'Unknown Assignment'}]`
     
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container
-      // Check if user is within 100px of the bottom
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 100
-      setIsUserScrolling(!isAtBottom)
-    }
-    
-    container.addEventListener('scroll', handleScroll)
-    return () => container.removeEventListener('scroll', handleScroll)
-  }, [])
-  
-  // Scroll to bottom when messages change (only if user isn't scrolling)
-  useEffect(() => {
-    if (!isUserScrolling) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [messages, isUserScrolling])
-  
+    // Replace the @ with the submission reference
+    const newInput = input.slice(0, -1) + submissionRef + ' '
+    setInput(newInput)
+    setSelectedSubmission(submission)
+    setShowSubmissionPicker(false)
+    textareaRef.current?.focus()
+  }
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !chatId) return
-    
-    console.log("[ChatClient] Sending message:", input.substring(0, 50) + "...")
-    
-    // Reset scroll tracking and error state when sending a new message
-    setIsUserScrolling(false)
-    setError(null)
-    
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
-      role: "user",
-      content: input,
-      timestamp: new Date()
-    }
-    
-    setMessages(prev => [...prev, userMessage])
-    const currentInput = input
+
+    const userMessage = input.trim()
     setInput("")
     setIsLoading(true)
-    
+    isUserScrolling.current = false // Reset scroll lock when user sends message
+
+    // Add user message to UI
+    const tempUserMessage: Message = {
+      id: `temp-user-${Date.now()}`,
+      role: "user",
+      content: userMessage,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, tempUserMessage])
+
+    // Store the user message
+    const messageResult = await createChatMessageAction({
+      userId,
+      chatId,
+      role: "user",
+      content: userMessage,
+      videoId: videoId || undefined
+    })
+
+    if (!messageResult.isSuccess) {
+      console.error("[Chat Client] Failed to save message")
+    }
+
+    const tempAssistantMessage: Message = {
+      id: `temp-assistant-${Date.now()}`,
+      role: "assistant",
+      content: "",
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, tempAssistantMessage])
+
     try {
-      // Create request body with video context if available
-      const requestBody = {
-        message: currentInput,
-        chatHistory: messages.map(m => ({
-          role: m.role,
-          content: m.content
-        })),
-        chatId: chatId,
-        ...(video && {
-          videoContext: {
-            id: video.videoId,
-            title: video.title,
-            transcript: video.transcript
-          },
-          videoId: video.videoId
-        })
-      }
+      console.log("[Chat Client] Sending message to API with video context:", !!video)
       
-      console.log("[ChatClient] Calling Claude API with video context:", !!video, "chatId:", chatId)
-      
-      // Call Claude API
       const response = await fetch("/api/claude/chat", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          message: userMessage,
+          userId,
+          chatId,
+          videoId: video?.videoId,
+          videoTitle: video?.title,
+          selectedSubmission: selectedSubmission ? {
+            submissionId: selectedSubmission.submissionId,
+            assignmentId: selectedSubmission.assignmentId,
+            assignmentTitle: assignments.get(selectedSubmission.assignmentId)?.title,
+            weekNumber: assignments.get(selectedSubmission.assignmentId)?.weekNumber,
+            status: selectedSubmission.status,
+            content: selectedSubmission.content,
+            aiFeedback: selectedSubmission.aiFeedback,
+            instructorFeedback: selectedSubmission.instructorFeedback
+          } : undefined
+        })
       })
-      
+
+      console.log("[Chat Client] API response status:", response.status)
+
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(errorText || `API error: ${response.status}`)
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to get response")
       }
-      
-      console.log("[ChatClient] Received response, processing stream...")
-      
-      // Handle streaming response
+
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
-      let assistantMessage = ""
-      let assistantMessageId = `msg-${Date.now()}-assistant`
-      let hasStartedStreaming = false
-      
+      let fullResponse = ""
+
       if (reader) {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
-          
+
           const chunk = decoder.decode(value)
           const lines = chunk.split("\n")
-          
+
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.slice(6))
-                
-                // Handle different response types
-                if (data.type === 'text' && data.text) {
-                  assistantMessage += data.text
-                  hasStartedStreaming = true
+                if (data.text) {
+                  fullResponse += data.text
                   
-                  // Update the assistant message in real-time
                   setMessages(prev => {
                     const newMessages = [...prev]
                     const lastMessage = newMessages[newMessages.length - 1]
-                    
-                    if (lastMessage && lastMessage.role === "assistant" && lastMessage.id === assistantMessageId) {
-                      lastMessage.content = assistantMessage
-                    } else {
-                      newMessages.push({
-                        id: assistantMessageId,
-                        role: "assistant",
-                        content: assistantMessage,
-                        timestamp: new Date()
-                      })
+                    if (lastMessage && lastMessage.role === "assistant") {
+                      lastMessage.content = fullResponse
                     }
-                    
                     return newMessages
                   })
-                } else if (data.type === 'done') {
-                  console.log("[ChatClient] Stream completed with chatId:", data.chatId)
-                  // Update our chatId if it changed
-                  if (data.chatId && data.chatId !== chatId) {
-                    setChatId(data.chatId)
-                  }
-                } else if (data.type === 'error') {
-                  console.error("[ChatClient] Stream error:", data.message)
-                  throw new Error(data.message || "Stream error")
+                }
+                
+                // Handle video recommendations
+                if (data.videoRecommendations) {
+                  console.log("[Chat Client] Received video recommendations:", data.videoRecommendations)
+                  // Video recommendations are already embedded in the response
                 }
               } catch (e) {
-                console.error("[ChatClient] Error parsing SSE data:", e)
+                // Skip invalid JSON
               }
             }
           }
         }
-        
-        // If we didn't receive any content, show an error
-        if (!hasStartedStreaming) {
-          throw new Error("No response received from AI")
-        }
       }
-      
-      console.log("[ChatClient] Chat completed successfully")
+
+      // Store the assistant response
+      if (fullResponse) {
+        await createChatMessageAction({
+          userId,
+          chatId,
+          role: "assistant",
+          content: fullResponse,
+          videoId: videoId || undefined
+        })
+      }
+
+      // Clear selected submission after sending
+      setSelectedSubmission(null)
       
     } catch (error) {
-      console.error("[ChatClient] Error sending message:", error)
-      
-      // Remove the loading message if it was added
-      setMessages(prev => prev.filter(m => m.id !== `msg-${Date.now()}-assistant`))
-      
-      // Show error message
-      const errorMessage = error instanceof Error ? error.message : "Failed to send message"
-      setError(errorMessage)
-      
-      // Show error toast
+      console.error("[Chat Client] Error:", error)
       toast({
         title: "Error",
-        description: errorMessage,
+        description: "Failed to get response from Greg AI. Please try again.",
         variant: "destructive"
       })
       
-      // Add error message to chat
-      setMessages(prev => [...prev, {
-        id: `msg-${Date.now()}-error`,
-        role: "assistant",
-        content: `❌ Error: ${errorMessage}\n\nPlease try again. If the problem persists, refresh the page or contact support.`,
-        timestamp: new Date()
-      }])
+      // Remove the temporary assistant message on error
+      setMessages(prev => prev.filter(m => m.id !== tempAssistantMessage.id))
     } finally {
       setIsLoading(false)
     }
   }
-  
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -315,368 +354,342 @@ export default function ChatClient({ userId }: ChatClientProps) {
     return (
       <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
+              <Bot className="w-8 h-8 text-purple-600" />
             </div>
-            <p className="text-sm text-muted-foreground">Initializing chat...</p>
+            <p className="text-muted-foreground">Initializing Greg AI...</p>
           </div>
         </div>
       </div>
     )
   }
   
-  // Function to render message content with markdown support and clickable timestamps
-  const renderMessageContent = (content: string, role: "user" | "assistant") => {
-    // Parse markdown with React
-    const parseMarkdown = (text: string) => {
-      // Handle code blocks first (to prevent other parsing inside code blocks)
-      text = text.replace(/```([^`]*?)```/g, (match, code) => {
-        return `<pre class="bg-gray-100 rounded-lg p-3 my-2 overflow-x-auto"><code>${code.trim()}</code></pre>`
-      })
-      
-      // Handle inline code
-      text = text.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>')
-      
-      // Handle headers (h1-h6)
-      text = text.replace(/^#{6}\s+(.+)$/gm, '<h6 class="text-sm font-semibold mt-4 mb-2">$1</h6>')
-      text = text.replace(/^#{5}\s+(.+)$/gm, '<h5 class="text-base font-semibold mt-4 mb-2">$1</h5>')
-      text = text.replace(/^#{4}\s+(.+)$/gm, '<h4 class="text-lg font-semibold mt-4 mb-2">$1</h4>')
-      text = text.replace(/^#{3}\s+(.+)$/gm, '<h3 class="text-xl font-semibold mt-6 mb-3">$1</h3>')
-      text = text.replace(/^#{2}\s+(.+)$/gm, '<h2 class="text-2xl font-bold mt-6 mb-3">$1</h2>')
-      text = text.replace(/^#{1}\s+(.+)$/gm, '<h1 class="text-3xl font-bold mt-6 mb-4">$1</h1>')
-      
-      // Handle bold
-      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      
-      // Handle italic
-      text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      
-      // Handle links
-      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
-      
-      // Handle bullet points
-      text = text.replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
-      // Wrap multiple li elements in ul
-      text = text.replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => `<ul class="list-disc list-inside my-2">${match}</ul>`)
-      
-      // Handle numbered lists
-      text = text.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>')
-      
-      return text
-    }
+  // Parse markdown with support for video recommendations
+  const parseMarkdown = (text: string) => {
+    const elements: React.ReactElement[] = []
+    let lastIndex = 0
     
-    // For assistant messages, parse timestamps and markdown
-    if (role === "assistant") {
-      const timestampRegex = /\[([^\]]+)\]\(timestamp:(\d+)\)/g
-      
-      return content.split("\n").map((paragraph, idx) => {
-        // First, handle timestamps if there's a video context
-        if (video) {
-          const parts: (string | React.ReactElement)[] = []
-          let lastIndex = 0
-          let match
-          
-          // Reset regex lastIndex for each paragraph
-          timestampRegex.lastIndex = 0
-          
-          while ((match = timestampRegex.exec(paragraph)) !== null) {
-            // Add text before the timestamp
-            if (match.index > lastIndex) {
-              parts.push(parseMarkdown(paragraph.substring(lastIndex, match.index)))
-            }
-            
-            // Add the clickable timestamp
-            const timestampText = match[1]
-            const seconds = parseInt(match[2])
-            
-            // Create YouTube URL with timestamp
-            const videoUrl = `https://www.youtube.com/watch?v=${video.videoId}&t=${seconds}`
-            
-            parts.push(
-              <a
-                key={`timestamp-${idx}-${match.index}`}
-                href={videoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md text-sm font-medium transition-colors duration-200 mx-1 no-underline"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {timestampText}
-              </a>
-            )
-            
-            lastIndex = match.index + match[0].length
-          }
-          
-          // Add remaining text
-          if (lastIndex < paragraph.length) {
-            parts.push(parseMarkdown(paragraph.substring(lastIndex)))
-          }
-          
-          // If we have mixed content, render it differently
-          if (parts.length > 0) {
-            return (
-              <div key={idx} className="mb-2 last:mb-0">
-                {parts.map((part, partIdx) => {
-                  if (typeof part === 'string') {
-                    return <span key={partIdx} dangerouslySetInnerHTML={{ __html: part }} />
-                  }
-                  return part
-                })}
-              </div>
-            )
-          }
-        }
-        
-        // No timestamps found or no video context, just parse markdown
-        return (
-          <div 
-            key={idx} 
-            className="mb-2 last:mb-0"
-            dangerouslySetInnerHTML={{ __html: parseMarkdown(paragraph) }}
-          />
+    // Parse video recommendations with thumbnails
+    const videoRegex = /\[VIDEO: ([^\]]+)\]\(([^)]+)\)/g
+    let match
+    
+    while ((match = videoRegex.exec(text)) !== null) {
+      // Add text before the video
+      if (match.index > lastIndex) {
+        const textBefore = text.substring(lastIndex, match.index)
+        elements.push(
+          <span key={`text-${lastIndex}`} dangerouslySetInnerHTML={{ 
+            __html: parseBasicMarkdown(textBefore) 
+          }} />
         )
-      })
+      }
+      
+      // Extract video info
+      const [fullMatch, title, videoId] = match
+      const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+      
+      // Add video recommendation card
+      elements.push(
+        <a
+          key={`video-${match.index}`}
+          href={`/dashboard/videos/${videoId}`}
+          className="block my-3 p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors duration-200 group"
+        >
+          <div className="flex items-start gap-3">
+            <div className="relative flex-shrink-0 w-32 h-20 rounded overflow-hidden">
+              <img 
+                src={thumbnailUrl} 
+                alt={title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-200 flex items-center justify-center">
+                <Video className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-purple-900 line-clamp-2 group-hover:text-purple-700 transition-colors">
+                {title}
+              </h4>
+              <div className="flex items-center gap-1 mt-1 text-xs text-purple-600">
+                <span>Watch video</span>
+                <ChevronRight className="w-3 h-3" />
+              </div>
+            </div>
+          </div>
+        </a>
+      )
+      
+      lastIndex = match.index + fullMatch.length
     }
     
-    // For user messages, just split by newlines
-    return content.split("\n").map((paragraph, idx) => (
-      <p key={idx} className="mb-2 last:mb-0">
-        {paragraph}
-      </p>
-    ))
+    // Add any remaining text
+    if (lastIndex < text.length) {
+      elements.push(
+        <span key={`text-${lastIndex}`} dangerouslySetInnerHTML={{ 
+          __html: parseBasicMarkdown(text.substring(lastIndex)) 
+        }} />
+      )
+    }
+    
+    return elements.length > 0 ? elements : <span dangerouslySetInnerHTML={{ __html: parseBasicMarkdown(text) }} />
   }
   
+  // Basic markdown parsing for other elements
+  const parseBasicMarkdown = (text: string) => {
+    // Handle headers (h1-h6)
+    text = text.replace(/^###### (.+)$/gm, '<h6 class="text-sm font-semibold mt-3 mb-1">$1</h6>')
+    text = text.replace(/^##### (.+)$/gm, '<h5 class="text-base font-semibold mt-3 mb-1">$1</h5>')
+    text = text.replace(/^#### (.+)$/gm, '<h4 class="text-lg font-semibold mt-4 mb-2">$1</h4>')
+    text = text.replace(/^### (.+)$/gm, '<h3 class="text-xl font-semibold mt-4 mb-2">$1</h3>')
+    text = text.replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold mt-5 mb-3">$1</h2>')
+    text = text.replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold mt-6 mb-4">$1</h1>')
+    
+    // Handle code blocks
+    text = text.replace(/```([^`]*?)```/g, (match, code) => {
+      return `<pre class="bg-gray-100 rounded-lg p-3 my-2 overflow-x-auto"><code>${code.trim()}</code></pre>`
+    })
+    
+    // Handle inline code
+    text = text.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>')
+    
+    // Handle bold
+    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    
+    // Handle italic
+    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    
+    // Handle links
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
+    
+    // Handle bullet points
+    text = text.replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
+    text = text.replace(/(<li.*<\/li>\n?)+/g, '<ul class="list-disc space-y-1 my-2">$&</ul>')
+    
+    // Handle numbered lists
+    text = text.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>')
+    text = text.replace(/(<li.*<\/li>\n?)+/g, function(match) {
+      if (match.includes('list-disc')) return match
+      return '<ol class="list-decimal space-y-1 my-2">' + match + '</ol>'
+    })
+    
+    // Handle line breaks
+    text = text.replace(/\n\n/g, '</p><p class="mt-2">')
+    text = '<p>' + text + '</p>'
+    
+    return text
+  }
+
   return (
     <div className="flex-1 bg-white/80 backdrop-blur-sm border border-border/40 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col m-4">
-      {/* Messages Area */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-8">
-        <div className="flex flex-col gap-8 max-w-4xl mx-auto">
-          {/* Show video context if available */}
-          {video && messages.length === 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4">
-              <p className="text-sm font-medium mb-1">Discussing video:</p>
-              <p className="text-sm text-muted-foreground">{video.title}</p>
+      {/* Header */}
+      <div className="border-b border-border/40 px-6 py-4 bg-gradient-to-r from-purple-50 to-purple-100/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+              <Bot className="w-5 h-5 text-white" />
             </div>
-          )}
-          
-          {/* Messages or welcome screen */}
-          {messages.length === 0 ? (
-            <>
-              {/* Welcome message */}
-              <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center flex-shrink-0 shadow-[0_4px_20px_rgba(59,130,246,0.3)]">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-3xl p-6 max-w-2xl border border-blue-200">
-                    <p className="font-semibold text-lg mb-3">Your AI Business Coach is here! 🚀</p>
-                    <p className="text-muted-foreground mb-4 leading-relaxed">
-                      I'm powered by Claude 4 and trained on all of Greg's content. I can help you:
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="flex items-start gap-3 p-3 bg-white/80 rounded-xl">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm mb-1">Find Video Insights</p>
-                          <p className="text-xs text-muted-foreground">Get specific timestamps and takeaways</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3 p-3 bg-white/80 rounded-xl">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm mb-1">Weekly Check-ins</p>
-                          <p className="text-xs text-muted-foreground">Get help with your assignments</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3 p-3 bg-white/80 rounded-xl">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm mb-1">Business Strategy</p>
-                          <p className="text-xs text-muted-foreground">Get personalized advice</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3 p-3 bg-white/80 rounded-xl">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm mb-1">Technical Help</p>
-                          <p className="text-xs text-muted-foreground">Debug and solve problems</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Add video recommendations */}
-                    <div className="mt-4 p-3 bg-white/80 rounded-xl">
-                      <p className="text-sm font-medium mb-2">📺 Start with these videos:</p>
-                      <div className="space-y-1">
-                        <a href="/dashboard/videos" className="text-xs text-blue-600 hover:underline block">
-                          • "How to Find Your First 100 Customers" - Essential strategies
-                        </a>
-                        <a href="/dashboard/videos" className="text-xs text-blue-600 hover:underline block">
-                          • "Building Your MVP in 2 Weeks" - Step-by-step guide
-                        </a>
-                        <a href="/dashboard/videos" className="text-xs text-blue-600 hover:underline block">
-                          • "AI Tools for Entrepreneurs" - Must-have toolkit
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Example Questions */}
-              <div className="mt-8">
-                <p className="text-sm font-medium text-muted-foreground mb-4">Try asking:</p>
-                <div className="flex flex-wrap gap-3">
-                  <button 
-                    onClick={() => handleExampleQuestion("What's the best way to validate my business idea?")}
-                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-blue-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
-                  >
-                    What's the best way to validate my business idea?
-                  </button>
-                  <button 
-                    onClick={() => handleExampleQuestion("How do I find my first customers?")}
-                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-blue-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
-                  >
-                    How do I find my first customers?
-                  </button>
-                  <button 
-                    onClick={() => handleExampleQuestion("Show me successful AI startup examples")}
-                    className="px-4 py-2 bg-white border border-border/40 rounded-full text-sm hover:border-blue-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-all duration-200"
-                  >
-                    Show me successful AI startup examples
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            /* Display messages */
-            messages.map((message) => (
-              <div key={message.id} className="flex gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                  message.role === "user" 
-                    ? "bg-gradient-to-br from-gray-600 to-gray-700 shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
-                    : "bg-gradient-to-br from-blue-600 to-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.3)]"
-                }`}>
-                  {message.role === "user" ? (
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className={`rounded-3xl p-6 max-w-2xl ${
-                    message.role === "user"
-                      ? "bg-gray-100"
-                      : "bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200"
-                  }`}>
-                    <div className="prose prose-sm max-w-none">
-                      {renderMessageContent(message.content, message.role)}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2 ml-3">
-                    {message.timestamp.toLocaleTimeString()}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
-          
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center flex-shrink-0 shadow-[0_4px_20px_rgba(59,130,246,0.3)]">
-                <svg className="w-7 h-7 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-3xl p-6 max-w-2xl border border-blue-200">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
-                  </div>
-                </div>
-              </div>
+            <div>
+              <h2 className="font-semibold text-lg">Greg AI</h2>
+              <p className="text-sm text-muted-foreground">
+                {video ? `Discussing: ${video.title}` : "Your AI learning companion"}
+              </p>
             </div>
-          )}
-          
-          <div ref={messagesEndRef} />
+          </div>
         </div>
       </div>
 
+      {/* Messages Area */}
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-8">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 max-w-2xl mx-auto">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+              <Bot className="w-8 h-8 text-purple-600" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">Welcome to Greg AI!</h3>
+              <p className="text-muted-foreground">
+                I'm your personal AI coach, here to help you succeed in your entrepreneurship journey. 
+                Ask me anything about the course content, get feedback on your submissions, or discuss your startup ideas!
+              </p>
+            </div>
+            
+            {/* Example questions */}
+            <div className="w-full space-y-2">
+              <p className="text-sm text-muted-foreground mb-3">Try asking:</p>
+              <div className="grid gap-2">
+                <button
+                  onClick={() => handleExampleQuestion("How can I validate my startup idea?")}
+                  className="text-left p-3 rounded-lg border border-border/40 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
+                >
+                  <span className="text-sm">How can I validate my startup idea?</span>
+                </button>
+                <button
+                  onClick={() => handleExampleQuestion("What makes a good MVP?")}
+                  className="text-left p-3 rounded-lg border border-border/40 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
+                >
+                  <span className="text-sm">What makes a good MVP?</span>
+                </button>
+                <button
+                  onClick={() => handleExampleQuestion("Can you review my latest submission? @")}
+                  className="text-left p-3 rounded-lg border border-border/40 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
+                >
+                  <span className="text-sm">Review my submission (type @ to select)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={cn(
+                  "flex gap-3",
+                  message.role === "assistant" ? "justify-start" : "justify-end"
+                )}
+              >
+                {message.role === "assistant" && (
+                  <div className="flex-shrink-0 w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                    <Bot className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                
+                <div
+                  className={cn(
+                    "max-w-[70%] rounded-2xl px-4 py-2",
+                    message.role === "assistant"
+                      ? "bg-gray-100 text-gray-900"
+                      : "bg-purple-600 text-white"
+                  )}
+                >
+                  <div className="prose prose-sm max-w-none">
+                    {message.role === "assistant" ? (
+                      <div className="text-sm [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:mb-3 [&>h2]:mb-3 [&>h3]:mb-2 [&>h4]:mb-2">
+                        {parseMarkdown(message.content)}
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    )}
+                  </div>
+                  <div className={cn(
+                    "text-xs mt-1 opacity-70",
+                    message.role === "assistant" ? "text-gray-600" : "text-purple-200"
+                  )}>
+                    {format(message.timestamp, "h:mm a")}
+                  </div>
+                </div>
+                
+                {message.role === "user" && (
+                  <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-gray-600" />
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {isLoading && (
+              <div className="flex gap-3 justify-start">
+                <div className="flex-shrink-0 w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <div className="bg-gray-100 rounded-2xl px-4 py-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Submission Picker */}
+      {showSubmissionPicker && submissions.length > 0 && (
+        <div className="absolute bottom-20 left-8 right-8 bg-white rounded-lg shadow-lg border border-border/40 max-h-64 overflow-y-auto">
+          <div className="p-3 border-b border-border/40">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AtSign className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium">Select a submission to discuss</span>
+              </div>
+              <button
+                onClick={() => setShowSubmissionPicker(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="p-2">
+            {submissions.map((submission) => {
+              const assignment = assignments.get(submission.assignmentId)
+              return (
+                <button
+                  key={submission.submissionId}
+                  onClick={() => selectSubmission(submission)}
+                  className="w-full text-left p-3 hover:bg-purple-50 rounded-lg transition-colors duration-200 mb-1"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">
+                        Week {assignment?.weekNumber || '?'}: {assignment?.title || 'Unknown Assignment'}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={cn(
+                          "text-xs px-2 py-0.5 rounded-full",
+                          submission.status === "approved" ? "bg-green-100 text-green-700" :
+                          submission.status === "submitted" ? "bg-blue-100 text-blue-700" :
+                          submission.status === "needs_revision" ? "bg-orange-100 text-orange-700" :
+                          "bg-gray-100 text-gray-700"
+                        )}>
+                          {submission.status.replace(/_/g, ' ')}
+                        </span>
+                        {submission.aiFeedback && (
+                          <span className="text-xs text-muted-foreground">
+                            Score: {submission.aiFeedback.overallScore}/10
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <FileText className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Input Area */}
-      <div className="border-t border-border/40 p-6 bg-gradient-to-t from-muted/5 to-transparent">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask about business strategies, video insights, or get help with your startup..."
-                className="w-full min-h-[60px] max-h-[120px] px-6 py-4 bg-white border border-border/40 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
-                rows={1}
-                disabled={isLoading}
-              />
-            </div>
-            <button
-              onClick={sendMessage}
-              className={`px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-2xl font-medium shadow-[0_10px_40px_rgba(59,130,246,0.3)] hover:shadow-[0_15px_50px_rgba(59,130,246,0.4)] transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 ${
-                (!input.trim() || isLoading) ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              disabled={!input.trim() || isLoading}
-            >
-              <span>{isLoading ? "Thinking..." : "Send"}</span>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              {video ? `Discussing: ${video.title}` : "Press Enter to send, Shift+Enter for new line"}
-            </p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Powered by Claude 4</span>
-            </div>
-          </div>
+      <div className="border-t border-border/40 p-4">
+        <div className="flex gap-3">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={video ? `Ask about "${video.title}"...` : "Ask Greg AI anything..."}
+            className="flex-1 resize-none rounded-xl border border-border/40 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 transition-all duration-200 min-h-[48px] max-h-32"
+            rows={1}
+            disabled={isLoading}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim() || isLoading}
+            className="bg-purple-600 text-white rounded-xl px-4 py-2 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+          <AtSign className="w-3 h-3" />
+          <span>Type @ to reference your submissions for feedback</span>
         </div>
       </div>
     </div>

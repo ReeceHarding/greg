@@ -13,338 +13,294 @@ function parseTimestamps(text: string, videoId?: string): string {
   if (!videoId) return text
   
   // Match various timestamp formats: [0:45], (2:30), 1:23:45, etc.
-  const timestampRegex = /(?:\[)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\]|\))?/g
+  const timestampRegex = /(?:\[)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\])?/g
   
   return text.replace(timestampRegex, (match, hours, minutes, seconds) => {
-    let totalSeconds = 0
-    
-    if (seconds) {
-      // Format: HH:MM:SS
-      totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds)
+    let totalSeconds = parseInt(minutes) * 60
+    if (hours.length <= 2 && parseInt(hours) < 60) {
+      totalSeconds += parseInt(hours) * 60
     } else {
-      // Format: MM:SS
       totalSeconds = parseInt(hours) * 60 + parseInt(minutes)
     }
+    if (seconds) {
+      totalSeconds += parseInt(seconds)
+    }
     
-    // Create a clickable timestamp link
     return `[${match}](timestamp:${totalSeconds})`
   })
 }
 
+// Build system prompt for Greg AI
+function buildSystemPrompt(videoTitle?: string, hasSubmission?: boolean): string {
+  const basePrompt = `You are Greg AI, an AI coaching assistant based on Greg Isenberg's entrepreneurship teachings. You help students succeed in their startup journey by providing actionable advice, feedback on their work, and guidance based on Greg's methodology.
+
+Key principles you follow:
+1. Be encouraging but honest - provide constructive feedback that helps students improve
+2. Focus on practical, actionable advice that students can implement immediately
+3. Reference specific concepts from Greg's teachings when relevant
+4. Help students think like entrepreneurs - validate ideas, find customers, build MVPs
+5. Emphasize the importance of shipping fast and iterating based on feedback
+
+When discussing videos:
+- Reference specific timestamps when mentioning concepts
+- Provide actionable takeaways from the content
+- Connect video lessons to the student's current work
+
+When reviewing submissions:
+- Acknowledge what they did well first
+- Provide specific, actionable feedback for improvement
+- Suggest next steps based on their progress
+- Reference relevant course materials or videos that could help
+- Give a balanced assessment that motivates continued learning
+
+Always maintain a supportive, coach-like tone that encourages students to take action and iterate quickly.`
+
+  if (videoTitle) {
+    return `${basePrompt}\n\nCurrently discussing the video: "${videoTitle}". Feel free to reference specific concepts and timestamps from this video when relevant.`
+  }
+  
+  if (hasSubmission) {
+    return `${basePrompt}\n\nThe student has shared a submission for feedback. Provide detailed, constructive feedback that helps them improve while acknowledging their effort and progress.`
+  }
+  
+  return basePrompt
+}
+
+// Format submission for context
+function formatSubmissionContext(submission: any): string {
+  let context = `\n\nSubmission Details:
+- Week ${submission.weekNumber || '?'}: ${submission.assignmentTitle || 'Assignment'}
+- Status: ${submission.status}
+- Submission Content:`
+  
+  if (submission.content.videoUrl) {
+    context += `\n  - Video Demo: ${submission.content.videoUrl}`
+  }
+  if (submission.content.githubUrl) {
+    context += `\n  - GitHub Repository: ${submission.content.githubUrl}`
+  }
+  if (submission.content.reflection) {
+    context += `\n  - Reflection: ${submission.content.reflection}`
+  }
+  
+  if (submission.aiFeedback) {
+    context += `\n\nPrevious AI Feedback:
+- Score: ${submission.aiFeedback.overallScore}/10
+- Strengths: ${submission.aiFeedback.strengths.join(', ')}
+- Areas for Improvement: ${submission.aiFeedback.improvements.join(', ')}
+- Next Steps: ${submission.aiFeedback.nextSteps.join(', ')}`
+  }
+  
+  if (submission.instructorFeedback) {
+    context += `\n\nInstructor Feedback:
+${submission.instructorFeedback.comments}`
+  }
+  
+  return context
+}
+
 export async function POST(request: NextRequest) {
-  console.log("[Claude API] Received chat request")
+  console.log("[Claude Chat API] Received chat request")
   
   try {
-    // Check for API key first
-    if (!process.env.CLAUDE_API_KEY) {
-      console.error("[Claude API] Missing CLAUDE_API_KEY environment variable")
-      return new Response("Claude API not configured", { status: 500 })
-    }
+    const { 
+      message, 
+      userId, 
+      chatId, 
+      videoId, 
+      videoTitle,
+      selectedSubmission 
+    } = await request.json()
     
-    // Authenticate user
-    const authResult = await auth()
-    if (!authResult.user) {
-      console.log("[Claude API] Unauthorized request")
-      return new Response("Unauthorized", { status: 401 })
-    }
-    
-    const { message, chatHistory = [], videoId, chatId } = await request.json()
-    
-    console.log(`[Claude Chat API] Received message: ${message.substring(0, 100)}...`)
-    console.log(`[Claude Chat API] Chat history length: ${chatHistory.length}`)
-    console.log(`[Claude Chat API] Video ID: ${videoId || 'none'}`)
-    console.log(`[Claude Chat API] Chat ID: ${chatId || 'none'}`)
-    
-    // Generate a consistent chatId if not provided
-    const currentChatId = chatId || `chat_${authResult.user.uid}_${videoId || 'general'}_${new Date().toISOString().split('T')[0]}`
-    
-    // Get video context if available
-    let videoData = null
-    let relevantChunks: TranscriptChunk[] = []
-    let searchedVideoIds: string[] = []
-    
-    if (videoId) {
-      console.log(`[Claude Chat API] Fetching video data for: ${videoId}`)
-      const videoResult = await getVideoByIdAction(videoId)
-      
-      if (videoResult.isSuccess && videoResult.data) {
-        videoData = videoResult.data
-        console.log(`[Claude Chat API] Found video: ${videoData.title}`)
-        
-        // Search for relevant transcript chunks in the specific video
-        console.log(`[Claude Chat API] Searching for relevant transcript chunks in video...`)
-        const searchResult = await searchTranscriptChunksAction(message, videoId, 5)
-        
-        if (searchResult.isSuccess && searchResult.data && searchResult.data.length > 0) {
-          relevantChunks = searchResult.data
-          searchedVideoIds = [videoId]
-          console.log(`[Claude Chat API] Found ${relevantChunks.length} relevant chunks in video`)
-        }
-      }
-    } else {
-      // No specific video context - search across all videos
-      console.log(`[Claude Chat API] No video context, searching across all videos...`)
-      const searchResult = await searchTranscriptChunksAction(message, undefined, 5)
-      
-      if (searchResult.isSuccess && searchResult.data && searchResult.data.length > 0) {
-        relevantChunks = searchResult.data
-        console.log(`[Claude Chat API] Found ${relevantChunks.length} relevant chunks across all videos`)
-        
-        // Note: In a real implementation, we'd need to enhance the search to return video IDs
-        // For now, we'll note this as a limitation
-        console.log(`[Claude Chat API] Note: Cross-video search results don't include video metadata`)
-      }
-    }
-    
-    // Build system message with video context
-    let systemMessage = `You are an AI assistant helping students in the AI Summer Camp program. Be helpful, encouraging, and provide specific actionable advice.`
-    
-    if (videoData) {
-      systemMessage += `\n\nYou are currently discussing the video: "${videoData.title}"`
-      systemMessage += `\nVideo URL: https://youtube.com/watch?v=${videoData.videoId}`
-      
-      if (relevantChunks.length > 0) {
-        systemMessage += `\n\nHere are the most relevant excerpts from the video transcript based on the user's question:`
-        relevantChunks.forEach((chunk, index) => {
-          const startTime = Math.floor(chunk.startTime)
-          const endTime = Math.floor(chunk.endTime)
-          const startMinutes = Math.floor(startTime / 60)
-          const startSeconds = startTime % 60
-          const endMinutes = Math.floor(endTime / 60)
-          const endSeconds = endTime % 60
-          const startTimestamp = `${startMinutes}:${startSeconds.toString().padStart(2, '0')}`
-          const endTimestamp = `${endMinutes}:${endSeconds.toString().padStart(2, '0')}`
-          
-          systemMessage += `\n\n**[${startTimestamp} - ${endTimestamp}]**\n${chunk.text}`
-        })
-        systemMessage += `\n\nIMPORTANT: When referencing specific parts of the video in your response, include clickable timestamps in the format [MM:SS] that students can click to jump directly to that part of the video. The timestamps will be automatically converted to clickable links.`
-        systemMessage += `\n\nExample: "As mentioned at [2:45], Greg explains the importance of finding your first customers..."`
-      }
-    } else if (relevantChunks.length > 0) {
-      // Found relevant content across multiple videos
-      systemMessage += `\n\nI found relevant content from the video library based on your question:`
-      relevantChunks.forEach((chunk, index) => {
-        const startTime = Math.floor(chunk.startTime)
-        const endTime = Math.floor(chunk.endTime)
-        const startMinutes = Math.floor(startTime / 60)
-        const startSeconds = startTime % 60
-        const endMinutes = Math.floor(endTime / 60)
-        const endSeconds = endTime % 60
-        const startTimestamp = `${startMinutes}:${startSeconds.toString().padStart(2, '0')}`
-        const endTimestamp = `${endMinutes}:${endSeconds.toString().padStart(2, '0')}`
-        
-        systemMessage += `\n\n**[${startTimestamp} - ${endTimestamp}]**\n${chunk.text}`
-      })
-      systemMessage += `\n\nNote: These excerpts are from various videos in the course. I recommend watching the full videos for complete context.`
-    }
-    
-    // Build messages for Claude
-    const messages: Array<{ role: string; content: string }> = []
-    
-    // Add chat history
-    for (const msg of chatHistory) {
-      messages.push({
-        role: msg.role,
-        content: msg.content
-      })
-    }
-    
-    // Add current message
-    messages.push({
-      role: "user",
-      content: message
+    console.log("[Claude Chat API] Request params:", {
+      hasMessage: !!message,
+      userId,
+      chatId,
+      hasVideo: !!videoId,
+      hasSubmission: !!selectedSubmission
     })
     
-    // Build system prompt
-    const systemPrompt = `You are an AI tutor helping students learn from educational content about startups, business, and entrepreneurship. 
-
-${systemMessage}
-
-Guidelines:
-- Be encouraging and supportive
-- Provide clear, actionable insights
-- Use examples when helpful
-- If discussing video content, reference specific timestamps when available
-- Format timestamps as [MM:SS] for easy reference
-- Break down complex concepts into understandable parts
-- Encourage students to apply what they learn
-- Use markdown formatting for better readability (headers, lists, bold, etc.)
-- When appropriate, use emojis to make the conversation more engaging
-- Keep responses concise but comprehensive`
-    
-    console.log("[Claude API] Calling Claude API with streaming")
-    
-    // Save user message immediately
-    try {
-      await createChatMessageAction({
-        chatId: currentChatId,
-        userId: authResult.user.uid,
-        role: "user",
-        content: message,
-        videoId: videoId || undefined
-      })
-      console.log("[Claude API] User message saved to database")
-    } catch (error) {
-      console.error("[Claude API] Error saving user message:", error)
-      // Continue even if saving fails
+    // Validate required fields
+    if (!message || !userId || !chatId) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
     }
     
-    // Create streaming response
+    // Check if Claude API key is configured
+    if (!process.env.CLAUDE_API_KEY) {
+      console.error("[Claude Chat API] CLAUDE_API_KEY not configured")
+      return NextResponse.json(
+        { error: "AI service not configured. Please contact support." },
+        { status: 503 }
+      )
+    }
+    
+    // Build the system prompt
+    const systemPrompt = buildSystemPrompt(videoTitle, !!selectedSubmission)
+    
+    // Build the user message with context
+    let fullMessage = message
+    if (selectedSubmission) {
+      fullMessage += formatSubmissionContext(selectedSubmission)
+    }
+    
+    // Search for relevant video content if we have a video context
+    let relevantChunks: TranscriptChunk[] = []
+    if (videoId || (!selectedSubmission && message.toLowerCase().includes('video'))) {
+      console.log("[Claude Chat API] Searching for relevant video content")
+      const searchResult = await searchTranscriptChunksAction(message, videoId, 5)
+      if (searchResult.isSuccess && searchResult.data) {
+        relevantChunks = searchResult.data
+        console.log(`[Claude Chat API] Found ${relevantChunks.length} relevant video chunks`)
+      }
+    }
+    
+    // Add relevant video context to the message
+    if (relevantChunks.length > 0) {
+      fullMessage += "\n\nRelevant video content:"
+      relevantChunks.forEach(chunk => {
+        const timestamp = Math.floor(chunk.startTime)
+        const minutes = Math.floor(timestamp / 60)
+        const seconds = timestamp % 60
+        fullMessage += `\n\n[${minutes}:${seconds.toString().padStart(2, '0')}]${videoTitle ? ` from "${videoTitle}"` : ''}:\n${chunk.text}`
+      })
+    }
+    
+    console.log("[Claude Chat API] Calling Claude API")
+    
+    // Call Claude API
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.CLAUDE_API_KEY,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: 2048,
+        temperature: 0.7,
+        system: systemPrompt,
+        messages: [
+          {
+            role: "user",
+            content: fullMessage
+          }
+        ],
+        stream: true
+      })
+    })
+    
+    console.log("[Claude Chat API] Claude API response status:", response.status)
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("[Claude Chat API] Claude API error:", errorText)
+      throw new Error(`Claude API error: ${response.status}`)
+    }
+    
+    // Create a streaming response
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
+        const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
+        
+        if (!reader) {
+          controller.close()
+          return
+        }
+        
+        let buffer = ""
+        let fullResponse = ""
+        
         try {
-          // Call Claude API
-          const response = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-API-Key": process.env.CLAUDE_API_KEY!,
-              "anthropic-version": "2023-06-01",
-              "anthropic-beta": "interleaved-thinking-2025-05-14"
-            },
-            body: JSON.stringify({
-              model: CLAUDE_MODEL,
-              messages: messages,
-              system: systemPrompt,
-              max_tokens: 4096,
-              stream: true,
-              temperature: 0.7
-            })
-          })
-          
-          if (!response.ok) {
-            const error = await response.text()
-            console.error("[Claude API] Error from Claude:", error)
-            
-            // Parse error for better user feedback
-            let errorMessage = "Failed to get response from AI"
-            try {
-              const errorData = JSON.parse(error)
-              if (errorData.error?.message) {
-                errorMessage = errorData.error.message
-              }
-            } catch (e) {
-              // Use default error message
-            }
-            
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'error',
-              message: errorMessage
-            })}\n\n`))
-            controller.close()
-            return
-          }
-          
-          const reader = response.body?.getReader()
-          if (!reader) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'error',
-              message: "No response body"
-            })}\n\n`))
-            controller.close()
-            return
-          }
-          
-          let assistantMessage = ""
-          const decoder = new TextDecoder()
-          let buffer = ""
-          
           while (true) {
             const { done, value } = await reader.read()
             if (done) break
             
-            // Add to buffer
             buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            
-            // Process all complete lines
-            buffer = lines.pop() || "" // Keep the last incomplete line in buffer
+            const lines = buffer.split("\n")
+            buffer = lines.pop() || ""
             
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.substring(6)
-                if (data === '[DONE]') continue
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6)
+                if (data === "[DONE]") continue
                 
                 try {
                   const parsed = JSON.parse(data)
                   
-                  if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-                    assistantMessage += parsed.delta.text
+                  if (parsed.type === "content_block_delta" && parsed.delta?.text) {
+                    const text = parsed.delta.text
+                    fullResponse += text
                     
-                    // Parse timestamps if video context exists
-                    const parsedContent = parseTimestamps(parsed.delta.text, videoId)
-                    
-                    // Forward the chunk to the client
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                      type: 'text',
-                      text: parsedContent
-                    })}\n\n`))
-                  } else if (parsed.type === 'message_stop') {
-                    // Save the complete assistant message
-                    console.log("[Claude API] Stream complete, saving assistant message")
-                    
-                    try {
-                      await createChatMessageAction({
-                        chatId: currentChatId,
-                        userId: authResult.user.uid,
-                        role: "assistant",
-                        content: assistantMessage,
-                        videoId: videoId || undefined
-                      })
-                      console.log("[Claude API] Assistant message saved to database")
-                    } catch (error) {
-                      console.error("[Claude API] Error saving assistant message:", error)
-                    }
-                    
-                    // Send completion signal with the chatId
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                      type: 'done',
-                      chatId: currentChatId
-                    })}\n\n`))
-                  } else if (parsed.type === 'error') {
-                    console.error("[Claude API] Stream error:", parsed)
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                      type: 'error',
-                      message: parsed.error?.message || 'Stream error'
-                    })}\n\n`))
+                    // Send the text chunk
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
+                    )
                   }
                 } catch (e) {
-                  console.error("[Claude API] Error parsing SSE data:", e)
+                  console.error("[Claude Chat API] Error parsing SSE data:", e)
                 }
               }
             }
           }
           
-          // Process any remaining buffer
-          if (buffer.length > 0) {
-            console.log("[Claude API] Processing remaining buffer:", buffer)
+          // Process the response for video recommendations if we have a specific video
+          if (fullResponse && videoId && videoTitle) {
+            // Look for timestamp references in the response
+            const timestampRegex = /\[(\d{1,2}):(\d{2})\]/g
+            let hasTimestamps = false
+            
+            // Check if response contains timestamps
+            if (timestampRegex.test(fullResponse)) {
+              hasTimestamps = true
+              
+              // Send a recommendation for the current video with timestamps
+              const videoRecommendations = [{
+                title: videoTitle,
+                videoId: videoId
+              }]
+              
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ videoRecommendations })}\n\n`)
+              )
+            }
           }
           
-          controller.close()
+          // Send done signal
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`))
         } catch (error) {
-          console.error("[Claude API] Stream error:", error)
-          const errorMessage = error instanceof Error ? error.message : "Stream error"
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'error',
-            message: errorMessage
-          })}\n\n`))
+          console.error("[Claude Chat API] Stream processing error:", error)
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ error: "Stream processing error" })}\n\n`)
+          )
+        } finally {
           controller.close()
         }
       }
     })
     
-    return new Response(stream, {
+    return new NextResponse(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         "Connection": "keep-alive"
       }
     })
-    
   } catch (error) {
-    console.error("[Claude API] Error:", error)
-    const errorMessage = error instanceof Error ? error.message : "Internal server error"
-    return new Response(errorMessage, { status: 500 })
+    console.error("[Claude Chat API] Error:", error)
+    
+    // Return a proper error response
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : "Failed to process chat request",
+        details: process.env.NODE_ENV === "development" ? String(error) : undefined
+      },
+      { status: 500 }
+    )
   }
 } 
