@@ -26,7 +26,8 @@ import {
   Eye,
   FileText,
   Users,
-  TrendingUp
+  TrendingUp,
+  MessageSquare
 } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
@@ -43,6 +44,15 @@ interface SubmissionWithDetails {
   submittedAt?: any
   aiFeedback?: any
   instructorFeedback?: any
+  content?: {
+    videoUrl?: string | null
+    githubUrl?: string | null
+    reflection?: string | null
+    supportingFiles?: any[]
+    blockers?: string | null
+    insights?: string | null
+    improvements?: string | null
+  }
 }
 
 interface ReviewDashboardClientProps {
@@ -162,6 +172,12 @@ export default function ReviewDashboardClient({ submissions }: ReviewDashboardCl
     } else {
       return <Badge className="bg-gray-100 text-gray-800">Submitted</Badge>
     }
+  }
+  
+  // Check if submission has check-in responses
+  const hasCheckInResponses = (submission: any) => {
+    const content = submission.content || {}
+    return !!(content.blockers || content.insights || content.improvements)
   }
   
   return (
@@ -320,6 +336,7 @@ export default function ReviewDashboardClient({ submissions }: ReviewDashboardCl
                       )}
                     </div>
                   </TableHead>
+                  <TableHead>Check-in</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -327,13 +344,13 @@ export default function ReviewDashboardClient({ submissions }: ReviewDashboardCl
               <TableBody>
                 {filteredSubmissions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No submissions found
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredSubmissions.map((submission) => (
-                    <TableRow key={submission.submissionId}>
+                    <TableRow key={submission.submissionId} className={hasCheckInResponses(submission) ? "bg-purple-50/30" : ""}>
                       <TableCell>
                         <input
                           type="checkbox"
@@ -369,17 +386,32 @@ export default function ReviewDashboardClient({ submissions }: ReviewDashboardCl
                         )}
                       </TableCell>
                       <TableCell>
+                        {hasCheckInResponses(submission) ? (
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4 text-purple-600" />
+                            <span className="text-sm font-medium text-purple-700">Yes</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {getStatusBadge(submission)}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
-                          variant="ghost"
+                          variant={hasCheckInResponses(submission) ? "default" : "ghost"}
                           size="sm"
                           onClick={() => router.push(`/admin/reviews/${submission.submissionId}`)}
                           className="gap-2"
                         >
                           <Eye className="h-4 w-4" />
                           Review
+                          {hasCheckInResponses(submission) && (
+                            <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">
+                              Check-in
+                            </Badge>
+                          )}
                         </Button>
                       </TableCell>
                     </TableRow>

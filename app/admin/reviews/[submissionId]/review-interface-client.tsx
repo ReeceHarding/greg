@@ -37,7 +37,9 @@ import {
   BookOpen,
   ChevronUp,
   CheckCircle,
-  Mail
+  Mail,
+  Lightbulb,
+  Sparkles
 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -266,6 +268,59 @@ export default function ReviewInterfaceClient({
                 </div>
               </CardContent>
             </Card>
+            
+            {/* Weekly Check-in Questions - Always show first if they exist */}
+            {(submission.content as any).blockers || (submission.content as any).insights || (submission.content as any).improvements ? (
+              <Card className="border-purple-200 bg-purple-50/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-purple-700">
+                    <MessageSquare className="w-5 h-5" />
+                    Weekly Check-in
+                  </CardTitle>
+                  <CardDescription>Student's responses to check-in questions</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Blockers */}
+                  {(submission.content as any).blockers && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-orange-600" />
+                        <h4 className="font-semibold text-orange-900">What are you stuck on this week?</h4>
+                      </div>
+                      <div className="bg-white/80 rounded-lg p-4 border border-orange-200/50">
+                        <p className="text-sm whitespace-pre-wrap">{(submission.content as any).blockers}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Insights */}
+                  {(submission.content as any).insights && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Lightbulb className="w-4 h-4 text-green-600" />
+                        <h4 className="font-semibold text-green-900">What was your biggest insight from this week?</h4>
+                      </div>
+                      <div className="bg-white/80 rounded-lg p-4 border border-green-200/50">
+                        <p className="text-sm whitespace-pre-wrap">{(submission.content as any).insights}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Improvements */}
+                  {(submission.content as any).improvements && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-blue-600" />
+                        <h4 className="font-semibold text-blue-900">How can I make this program better for next week?</h4>
+                      </div>
+                      <div className="bg-white/80 rounded-lg p-4 border border-blue-200/50">
+                        <p className="text-sm whitespace-pre-wrap">{(submission.content as any).improvements}</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
             
             {/* Video Demo */}
             {submission.content.videoUrl && (
